@@ -32,8 +32,53 @@ def decode_image_data(img_item):
     return None
 
 
-@app.route("/api/health", methods=["GET"])
-def health():
+def get_target_endpoint():
+    # 1. From rewrite query parameter
+    endpoint = request.args.get("endpoint")
+    if endpoint:
+        return endpoint.strip("/").lower()
+    
+    # 2. From request path
+    path = request.path.strip("/")
+    if path.startswith("api/"):
+        path = path[4:]
+    if path.endswith(".py"):
+        path = path[:-3]
+    return path.lower()
+
+
+@app.route("/", methods=["GET", "POST", "OPTIONS"])
+@app.route("/api", methods=["GET", "POST", "OPTIONS"])
+@app.route("/api/index", methods=["GET", "POST", "OPTIONS"])
+@app.route("/api/<path:subpath>", methods=["GET", "POST", "OPTIONS"])
+@app.route("/<path:subpath>", methods=["GET", "POST", "OPTIONS"])
+def vercel_entrypoint(subpath=""):
+    if request.method == "OPTIONS":
+        resp = jsonify({"status": "ok"})
+        resp.headers.add("Access-Control-Allow-Origin", "*")
+        resp.headers.add("Access-Control-Allow-Headers", "*")
+        resp.headers.add("Access-Control-Allow-Methods", "*")
+        return resp
+
+    endpoint = get_target_endpoint()
+    if not endpoint or endpoint in ("index", "api"):
+        endpoint = subpath.strip("/").lower() or "health"
+
+    if endpoint == "health":
+        return health_handler()
+    elif endpoint == "generate":
+        return generate_handler()
+    elif endpoint in ("render-slide", "render_slide"):
+        return render_slide_handler()
+    elif endpoint in ("render-all", "render_all"):
+        return render_all_handler()
+    elif endpoint in ("export-zip", "export_zip"):
+        return export_zip_handler()
+    else:
+        return jsonify({"error": f"Unknown endpoint '{endpoint}'", "status": 404}), 404
+
+
+def health_handler():
     has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
     return jsonify({
         "status": "ok",
@@ -44,8 +89,7 @@ def health():
     })
 
 
-@app.route("/api/generate", methods=["POST"])
-def generate():
+def generate_handler():
     try:
         data = request.get_json(force=True)
         raw_images = data.get("images", [])
@@ -93,7 +137,7 @@ def generate():
 
 
 @app.route("/api/render-slide", methods=["POST"])
-def render_slide():
+def render_slide_handler():
     try:
         data = request.get_json(force=True)
         spec = data.get("spec")
@@ -120,7 +164,7 @@ def render_slide():
 
 
 @app.route("/api/render-all", methods=["POST"])
-def render_all():
+def render_all_handler():
     try:
         data = request.get_json(force=True)
         spec = data.get("spec")
@@ -147,7 +191,7 @@ def render_all():
 
 
 @app.route("/api/export-zip", methods=["POST"])
-def export_zip():
+def export_zip_handler():
     try:
         data = request.get_json(force=True)
         spec = data.get("spec")
