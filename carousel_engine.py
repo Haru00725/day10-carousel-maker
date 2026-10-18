@@ -788,9 +788,8 @@ def new_spec(size, mode, theme, grain, family, n):
 
 
 def build_spec(images, vibe, family=None, mode="separate", size=(1080, 1350), seed=0, cover=True):
-    family = family or vibe.get("family", "scrapbook")
-    builder = {"scrapbook": build_scrapbook, "classic": build_classic, "whimsy": build_whimsy, "scribble": build_scribble}.get(family, build_scrapbook)
-    spec = builder(images, vibe, mode, size, seed, cover)
+    # Strictly enforce scrapbook aesthetic for this editor
+    spec = build_scrapbook(images, vibe, mode, size, seed, cover)
     spec["global"]["seed"] = seed
     return spec
 
@@ -1022,6 +1021,15 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         ])
         sl[0].update(bg={"mode": "gradient", "bg1": "#f9f6ee", "bg2": "#efe9dc"}, elements=cov_els)
 
+    # In continuous mode, add subtle panoramic backdrop text
+    if cont:
+        mood_word = vibe.get("mood_word", "MEMORIES").upper()
+        # Ambient background text on slide 0 that subtly flows across the whole panorama
+        sl[0]["elements"].append(
+            E("text", text=mood_word, font="serif_italic", size=180, color="theme:title",
+              opacity=0.07, x=n * 0.45, y=0.20, shadow=False, z=0)
+        )
+
     for idx in range(n):
         target_idx = idx + slide_offset
         if target_idx >= len(sl):
@@ -1031,15 +1039,28 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         subtitle = v_slide.get("subtitle") or "A special memory captured in time"
         label = v_slide.get("label") or "detail"
         
-        rot = (-3.0 if idx % 2 == 0 else 3.0) + rng.uniform(-1.0, 1.0)
-        cy = 0.44 + (0.02 if idx % 2 == 0 else -0.02)
+        if cont:
+            # Stagger polaroids dynamically across slides for an authentic scrapbook panorama
+            if idx % 3 == 0:
+                cx, cy = 0.48, 0.44
+                rot = -2.8 + rng.uniform(-0.8, 0.8)
+            elif idx % 3 == 1:
+                cx, cy = 0.54, 0.42
+                rot = 3.2 + rng.uniform(-0.8, 0.8)
+            else:
+                cx, cy = 0.46, 0.45
+                rot = -1.6 + rng.uniform(-0.8, 0.8)
+        else:
+            rot = (-3.0 if idx % 2 == 0 else 3.0) + rng.uniform(-1.0, 1.0)
+            cy = 0.44 + (0.02 if idx % 2 == 0 else -0.02)
+            cx = 0.5
         
         slide_els = [
-            E("torn", y=0.75, h=int(0.24 * H), color="theme:band", jag=14, z=0),
-            E("frame", photo=idx, style="polaroid", caption=title, font="hand", x=0.5, y=cy, rotate=round(rot, 1), z=1),
-            E("tape", w=220, h=54, x=0.5 + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
+            E("torn", y=0.76, h=int(0.24 * H), color="theme:band", jag=14, z=0),
+            E("frame", photo=idx, style="polaroid", caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
+            E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
               color="theme:tape", alpha=230, z=2),
-            E("text", text=subtitle, font="hand", size=54, color="theme:note", max_w=0.80, x=0.5, y=0.86,
+            E("text", text=subtitle, font="hand", size=54, color="theme:note", max_w=0.80, x=cx, y=0.86,
               rotate=round(rng.uniform(-2, 2), 1), shadow=False, line_gap=1.05),
             E("star", shape="sparkle4", size=rng.randint(42, 68), x=0.14 if idx % 2 == 0 else 0.86,
               y=0.18 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
@@ -1047,16 +1068,64 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
               y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
         ]
         
-        if n > 1 and idx % 2 == 1:
-            inset_ph = (idx + 1) % n
-            slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
-            slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
-        elif idx % 2 == 0:
-            slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=2))
+        if not cont:
+            if n > 1 and idx % 2 == 1:
+                inset_ph = (idx + 1) % n
+                slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
+                slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
+            elif idx % 2 == 0:
+                slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=2))
             
         sl[target_idx].update(
             bg={"mode": "gradient", "bg1": "#faf8f2", "bg2": "#f1ebe0"},
             elements=slide_els
         )
+
+    # In continuous mode, add cross-seam scrapbook bridge elements connecting every pair of slides!
+    if cont:
+        for b in range(1, n):
+            prev_idx = b - 1
+            # 1. Washi tape strip crossing directly over the seam (x=1.0)
+            tape_y = 0.22 if b % 2 == 1 else 0.70
+            tape_rot = rng.uniform(-10, 10)
+            sl[prev_idx]["elements"].append(
+                E("tape", w=260, h=62, x=1.0, y=tape_y, rotate=round(tape_rot, 1),
+                  color="theme:tape", alpha=235, z=2)
+            )
+            
+            # 2. Sparkle star doodle bridging the cut
+            sl[prev_idx]["elements"].append(
+                E("star", shape="sparkle4", size=rng.randint(52, 78), x=1.0,
+                  y=0.48 + rng.uniform(-0.12, 0.12), rotate=rng.randint(-15, 15),
+                  color="theme:star", z=2)
+            )
+            
+            # 3. Mini photo inset sitting across the seam on alternating slides
+            if b % 2 == 1 and n > 1:
+                inset_ph = (b + 1) % n
+                sl[prev_idx]["elements"].append(
+                    E("inset", photo=inset_ph, w=220, label="moment", x=1.0,
+                      y=0.34, rotate=round(rng.uniform(-6, 6), 1),
+                      color="theme:note", z=2)
+                )
+                sl[prev_idx]["elements"].append(
+                    E("tape", w=130, h=40, x=1.0, y=0.22, rotate=round(rng.uniform(-10, 10), 1),
+                      color="theme:hl", alpha=210, z=3)
+                )
+            else:
+                # Doodled connecting arrow across the seam with swipe cue
+                sl[prev_idx]["elements"].append(
+                    E("arrow", x=0.86, y=0.88, x2=1.14, y2=0.88, bend=28, width=6,
+                      color="theme:note", z=2)
+                )
+                sl[prev_idx]["elements"].append(
+                    E("text", text="continue →", font="hand", size=42, color="theme:note",
+                      x=0.98, y=0.93, rotate=2, shadow=False, z=2)
+                )
+            
+            # 4. Squiggle wave line crossing the bottom seam
+            sl[prev_idx]["elements"].append(
+                E("squiggle", span=0.5, x=1.0, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=1)
+            )
         
     return spec

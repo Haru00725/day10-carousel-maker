@@ -542,11 +542,12 @@
   }
 
   function generateClientSideScrapbook(options) {
-    const { images, hint, preset, size, cover } = options;
+    const { images, hint, preset, size, cover, mode } = options;
     const n = images.length;
     const isSquare = size === '1:1';
     const W = 1080;
     const H = isSquare ? 1080 : 1350;
+    const cont = mode === 'continuous';
 
     const paletteMap = {
       'Warm Cream & Espresso': {
@@ -575,8 +576,8 @@
     const storyHeadline = hint ? hint.toUpperCase() : 'SWEET MEMORIES';
     const slides = [];
 
-    // Cover Slide
-    if (cover) {
+    // Cover Slide (only if cover is checked and not in continuous panorama mode)
+    if (cover && !cont) {
       slides.push({
         bg: { mode: 'gradient' },
         elements: [
@@ -606,30 +607,141 @@
     ];
 
     for (let i = 0; i < n; i++) {
-      const rot = (i % 2 === 0 ? -2.8 : 2.8) + (i % 3 === 0 ? 0.6 : -0.6);
-      const cy = 0.44 + (i % 2 === 0 ? 0.02 : -0.02);
+      let cx = 0.5;
+      let cy = 0.44;
+      let rot = (i % 2 === 0 ? -2.8 : 2.8) + (i % 3 === 0 ? 0.6 : -0.6);
+
+      if (cont) {
+        if (i % 3 === 0) {
+          cx = 0.48;
+          cy = 0.44;
+          rot = -2.8;
+        } else if (i % 3 === 1) {
+          cx = 0.54;
+          cy = 0.42;
+          rot = 3.2;
+        } else {
+          cx = 0.46;
+          cy = 0.45;
+          rot = -1.6;
+        }
+      } else {
+        cy += (i % 2 === 0 ? 0.02 : -0.02);
+      }
+
       const note = sampleNotes[i % sampleNotes.length];
 
       const els = [
         { type: 'torn', y: 0.76, h: Math.round(0.24 * H), color: 'theme:band', z: 0 },
-        { type: 'frame', photo: i, style: 'polaroid', caption: `memory 0${i + 1}`, font: 'hand', x: 0.5, y: cy, rotate: rot, z: 1 },
-        { type: 'tape', w: 220, h: 54, x: 0.5, y: cy - 0.28, rotate: rot - 4, color: 'theme:tape', alpha: 230, z: 2 },
-        { type: 'text', text: note, font: 'hand', size: 54, color: 'theme:note', max_w: 0.8, x: 0.5, y: 0.86, rotate: 1, z: 1 },
+        { type: 'frame', photo: i, style: 'polaroid', caption: `memory 0${i + 1}`, font: 'hand', x: cx, y: cy, rotate: rot, z: 1 },
+        { type: 'tape', w: 220, h: 54, x: cx, y: cy - 0.28, rotate: rot - 4, color: 'theme:tape', alpha: 230, z: 2 },
+        { type: 'text', text: note, font: 'hand', size: 54, color: 'theme:note', max_w: 0.8, x: cx, y: 0.86, rotate: 1, z: 1 },
         { type: 'star', shape: 'sparkle4', size: 52, x: i % 2 === 0 ? 0.14 : 0.86, y: 0.18, color: 'theme:star', z: 2 },
         { type: 'star', shape: 'sparkle4', size: 36, x: i % 2 === 0 ? 0.88 : 0.12, y: 0.72, color: 'theme:star', z: 2 }
       ];
 
-      if (n > 1 && i % 2 === 1) {
-        els.push({ type: 'inset', photo: (i + 1) % n, w: 200, label: 'detail', x: 0.82, y: 0.22, rotate: 6, color: 'theme:note', z: 2 });
-        els.push({ type: 'tape', w: 120, h: 40, x: 0.82, y: 0.14, rotate: -10, color: 'theme:hl', alpha: 200, z: 3 });
-      } else if (i % 2 === 0) {
-        els.push({ type: 'squiggle', span: 0.45, x: 0.5, y: 0.92, color: 'theme:hl', z: 2 });
+      if (!cont) {
+        if (n > 1 && i % 2 === 1) {
+          els.push({ type: 'inset', photo: (i + 1) % n, w: 200, label: 'detail', x: 0.82, y: 0.22, rotate: 6, color: 'theme:note', z: 2 });
+          els.push({ type: 'tape', w: 120, h: 40, x: 0.82, y: 0.14, rotate: -10, color: 'theme:hl', alpha: 200, z: 3 });
+        } else if (i % 2 === 0) {
+          els.push({ type: 'squiggle', span: 0.45, x: 0.5, y: 0.92, color: 'theme:hl', z: 2 });
+        }
       }
 
       slides.push({
         bg: { mode: 'gradient' },
         elements: els
       });
+    }
+
+    // In continuous mode, add cross-seam bridge elements to connect every pair of slides!
+    if (cont) {
+      for (let b = 1; b < n; b++) {
+        const prevSlide = slides[b - 1];
+        if (prevSlide && prevSlide.elements) {
+          // 1. Cross-seam washi tape at x = 1.0 (spanning into next slide)
+          prevSlide.elements.push({
+            type: 'tape',
+            w: 260,
+            h: 62,
+            x: 1.0,
+            y: b % 2 === 1 ? 0.22 : 0.70,
+            rotate: b % 2 === 1 ? -6 : 8,
+            color: 'theme:tape',
+            alpha: 235,
+            z: 2
+          });
+
+          // 2. Cross-seam sparkle star
+          prevSlide.elements.push({
+            type: 'star',
+            shape: 'sparkle4',
+            size: 60,
+            x: 1.0,
+            y: 0.48,
+            rotate: 12,
+            color: 'theme:star',
+            z: 2
+          });
+
+          // 3. Alternate mini photo inset / arrow across the seam
+          if (b % 2 === 1 && n > 1) {
+            prevSlide.elements.push({
+              type: 'inset',
+              photo: (b + 1) % n,
+              w: 220,
+              label: 'moment',
+              x: 1.0,
+              y: 0.34,
+              rotate: -4,
+              color: 'theme:note',
+              z: 2
+            });
+            prevSlide.elements.push({
+              type: 'tape',
+              w: 130,
+              h: 40,
+              x: 1.0,
+              y: 0.22,
+              rotate: -8,
+              color: 'theme:hl',
+              alpha: 210,
+              z: 3
+            });
+          } else {
+            prevSlide.elements.push({
+              type: 'arrow',
+              x: 0.88,
+              y: 0.88,
+              angle: 15,
+              color: 'theme:note',
+              z: 2
+            });
+            prevSlide.elements.push({
+              type: 'text',
+              text: 'continue →',
+              font: 'hand',
+              size: 42,
+              color: 'theme:note',
+              x: 0.98,
+              y: 0.93,
+              rotate: 2,
+              z: 2
+            });
+          }
+
+          // 4. Squiggle wave line crossing the seam
+          prevSlide.elements.push({
+            type: 'squiggle',
+            span: 0.5,
+            x: 1.0,
+            y: 0.92,
+            color: 'theme:hl',
+            z: 1
+          });
+        }
+      }
     }
 
     return {
