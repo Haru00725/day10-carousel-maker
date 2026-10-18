@@ -1,8 +1,14 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api/index"
     }
-  ]
+  ],
+  "functions": {
+    "api/*.py": {
+      "includeFiles": "carousel_engine.py,fonts/**"
+    }
+  }
 }

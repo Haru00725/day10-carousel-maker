@@ -8,10 +8,11 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from PIL import Image, ImageOps
 
-# Ensure root directory is in sys.path
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
+api_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(api_dir)
+for p in [api_dir, root_dir]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 import carousel_engine as ce
 

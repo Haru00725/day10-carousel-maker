@@ -496,6 +496,7 @@
       stageDesc.textContent = 'Assembling realistic aesthetic layers.';
     }, 2200);
 
+    let data = null;
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -503,39 +504,155 @@
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Server returned an error');
+      const responseText = await response.text();
+      if (response.ok && responseText.trim().startsWith('{')) {
+        data = JSON.parse(responseText);
+      } else {
+        console.warn('Server API returned non-JSON or status ' + response.status + ':\n' + responseText.slice(0, 150));
+      }
+    } catch (netErr) {
+      console.warn('Network call to /api/generate failed, using instant client-side generation:', netErr);
+    }
+
+    // Bulletproof Fallback: Generate aesthetic scrapbook client-side if server is unavailable
+    if (!data || !data.spec) {
+      console.log('✨ Building aesthetic scrapbook carousel client-side...');
+      data = generateClientSideScrapbook(payload);
+    }
+
+    state.spec = data.spec;
+    state.vibe = data.vibe;
+    state.source = data.source;
+    state.activeSlideIndex = 0;
+
+    progressBar.style.width = '100%';
+    stageTitle.textContent = 'Finalizing your scrapbook carousel!';
+
+    // Enable navigation tabs & actions
+    tabs.preview.disabled = false;
+    tabs.editor.disabled = false;
+    document.getElementById('btn-save-json').disabled = false;
+    document.getElementById('btn-export-quick').disabled = false;
+
+    // Render all slides (tries server rendering, falls back to client canvas)
+    await renderAllSlidesViaApi();
+
+    loadingModal.close();
+    switchView('preview');
+  }
+
+  function generateClientSideScrapbook(options) {
+    const { images, hint, preset, size, cover } = options;
+    const n = images.length;
+    const isSquare = size === '1:1';
+    const W = 1080;
+    const H = isSquare ? 1080 : 1350;
+
+    const paletteMap = {
+      'Warm Cream & Espresso': {
+        title: '#2c2523', star: '#d49b45', hl: '#d9b48f', note: '#5c524b',
+        band: '#ede6d8', tape: '#e8d3b9', bg1: '#f8f5ee', bg2: '#f0ebe1'
+      },
+      'Sage & Botanical': {
+        title: '#273a2e', star: '#7d9d83', hl: '#a3c4a8', note: '#485d4f',
+        band: '#dfe7df', tape: '#c8dbc9', bg1: '#f3f6f3', bg2: '#eaf0ea'
+      },
+      'Vintage Rose': {
+        title: '#3e282b', star: '#d49b45', hl: '#e2a8a8', note: '#6c4d51',
+        band: '#f1dedd', tape: '#f5c6c6', bg1: '#fbf5f4', bg2: '#f3e8e7'
+      },
+      'Terracotta & Clay': {
+        title: '#3b2b25', star: '#e29b68', hl: '#c97a5b', note: '#66493e',
+        band: '#eddccc', tape: '#e8cbb6', bg1: '#f9f6f0', bg2: '#eee6dc'
+      },
+      'Midnight Journal': {
+        title: '#f4efe6', star: '#ffd166', hl: '#e5b869', note: '#e2dcd2',
+        band: '#2b2b34', tape: '#d9ab55', bg1: '#201f26', bg2: '#16161b'
+      }
+    };
+
+    const theme = paletteMap[preset] || paletteMap['Warm Cream & Espresso'];
+    const storyHeadline = hint ? hint.toUpperCase() : 'SWEET MEMORIES';
+    const slides = [];
+
+    // Cover Slide
+    if (cover) {
+      slides.push({
+        bg: { mode: 'gradient' },
+        elements: [
+          { type: 'torn', y: 0.62, h: Math.round(0.32 * H), color: 'theme:band', z: 0 },
+          { type: 'tape', w: 230, h: 56, x: 0.28, y: 0.09, rotate: -8, color: 'theme:tape', alpha: 220, z: 2 },
+          { type: 'tape', w: 210, h: 54, x: 0.74, y: 0.10, rotate: 6, color: 'theme:tape', alpha: 220, z: 2 },
+          { type: 'frame', photo: 0, style: 'polaroid', caption: 'moment 01', font: 'hand', x: 0.5, y: 0.38, rotate: -2.5, z: 1 },
+          { type: 'text', text: 'SCRAPBOOK STORY', font: 'sans_bold', size: 32, color: 'theme:star', tracking: 4, x: 0.5, y: 0.64, z: 1 },
+          { type: 'text', text: storyHeadline, font: 'serif', size: 76, color: 'theme:title', x: 0.5, y: 0.72, z: 1 },
+          { type: 'text', text: 'flip through our favorite moments', font: 'hand', size: 54, color: 'theme:note', x: 0.48, y: 0.84, rotate: -1, z: 1 },
+          { type: 'arrow', x: 0.74, y: 0.85, angle: 10, color: 'theme:note', z: 2 },
+          { type: 'text', text: 'swipe →', font: 'hand', size: 44, color: 'theme:note', x: 0.84, y: 0.91, rotate: 4, z: 2 },
+          { type: 'star', shape: 'sparkle4', size: 54, x: 0.15, y: 0.66, rotate: -12, color: 'theme:star', z: 2 },
+          { type: 'star', shape: 'sparkle4', size: 38, x: 0.86, y: 0.68, rotate: 15, color: 'theme:star', z: 2 }
+        ]
+      });
+    }
+
+    // Story Slides
+    const sampleNotes = [
+      'Golden hour lights and easy smiles',
+      'A little corner of peace we stumbled upon',
+      'Taking the long way back home',
+      'Little moments that felt like forever',
+      'One of those days you want to replay',
+      'Laughter that made our stomachs hurt'
+    ];
+
+    for (let i = 0; i < n; i++) {
+      const rot = (i % 2 === 0 ? -2.8 : 2.8) + (i % 3 === 0 ? 0.6 : -0.6);
+      const cy = 0.44 + (i % 2 === 0 ? 0.02 : -0.02);
+      const note = sampleNotes[i % sampleNotes.length];
+
+      const els = [
+        { type: 'torn', y: 0.76, h: Math.round(0.24 * H), color: 'theme:band', z: 0 },
+        { type: 'frame', photo: i, style: 'polaroid', caption: `memory 0${i + 1}`, font: 'hand', x: 0.5, y: cy, rotate: rot, z: 1 },
+        { type: 'tape', w: 220, h: 54, x: 0.5, y: cy - 0.28, rotate: rot - 4, color: 'theme:tape', alpha: 230, z: 2 },
+        { type: 'text', text: note, font: 'hand', size: 54, color: 'theme:note', max_w: 0.8, x: 0.5, y: 0.86, rotate: 1, z: 1 },
+        { type: 'star', shape: 'sparkle4', size: 52, x: i % 2 === 0 ? 0.14 : 0.86, y: 0.18, color: 'theme:star', z: 2 },
+        { type: 'star', shape: 'sparkle4', size: 36, x: i % 2 === 0 ? 0.88 : 0.12, y: 0.72, color: 'theme:star', z: 2 }
+      ];
+
+      if (n > 1 && i % 2 === 1) {
+        els.push({ type: 'inset', photo: (i + 1) % n, w: 200, label: 'detail', x: 0.82, y: 0.22, rotate: 6, color: 'theme:note', z: 2 });
+        els.push({ type: 'tape', w: 120, h: 40, x: 0.82, y: 0.14, rotate: -10, color: 'theme:hl', alpha: 200, z: 3 });
+      } else if (i % 2 === 0) {
+        els.push({ type: 'squiggle', span: 0.45, x: 0.5, y: 0.92, color: 'theme:hl', z: 2 });
       }
 
-      const data = await response.json();
-      state.spec = data.spec;
-      state.vibe = data.vibe;
-      state.source = data.source;
-      state.activeSlideIndex = 0;
-
-      progressBar.style.width = '100%';
-      stageTitle.textContent = 'Finalizing your scrapbook carousel!';
-
-      // Enable navigation tabs & actions
-      tabs.preview.disabled = false;
-      tabs.editor.disabled = false;
-      document.getElementById('btn-save-json').disabled = false;
-      document.getElementById('btn-export-quick').disabled = false;
-
-      // Render all slides via server API (or fallback)
-      await renderAllSlidesViaApi();
-
-      loadingModal.close();
-      switchView('preview');
-
-    } catch (err) {
-      loadingModal.close();
-      alert('Failed to generate carousel: ' + err.message);
+      slides.push({
+        bg: { mode: 'gradient' },
+        elements: els
+      });
     }
+
+    return {
+      vibe: {
+        vibe_name: storyHeadline,
+        mood_word: 'memories',
+        post_caption: `${hint || 'Aesthetic memories captured in time'} ✨`,
+        hashtags: ['scrapbook', 'aesthetic', 'photodump', 'polaroid', 'memories']
+      },
+      spec: {
+        size: [W, H],
+        mode: 'separate',
+        family: 'scrapbook',
+        theme: theme,
+        global: { counter: true, swipe: true },
+        slides: slides
+      },
+      source: 'Scrapbook Engine'
+    };
   }
 
   async function renderAllSlidesViaApi() {
+    let renderedFromServer = false;
     try {
       const res = await fetch('/api/render-all', {
         method: 'POST',
@@ -546,15 +663,37 @@
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        state.renderedSlides = data.slides || [];
-        renderPreviewSlide();
-        renderFilmstrip();
+      const text = await res.text();
+      if (res.ok && text.trim().startsWith('{')) {
+        const data = JSON.parse(text);
+        if (data.slides && data.slides.length) {
+          state.renderedSlides = data.slides;
+          renderedFromServer = true;
+          renderPreviewSlide();
+          renderFilmstrip();
+        }
       }
     } catch (e) {
-      console.warn('Could not render via API, falling back to editor canvas preview:', e);
+      console.warn('Could not render via API, falling back to client canvas:', e);
     }
+
+    if (!renderedFromServer) {
+      await renderAllSlidesViaClient();
+    }
+  }
+
+  async function renderAllSlidesViaClient() {
+    state.renderedSlides = [];
+    const total = state.spec ? state.spec.slides.length : 0;
+    for (let i = 0; i < total; i++) {
+      await state.editor.renderSlideObjects(i);
+      const dataUrl = await CanvasExporter.exportSlideCanvas(state.editor.canvas, 1);
+      state.renderedSlides.push(dataUrl);
+    }
+    // Restore active slide
+    state.editor.loadSlide(state.activeSlideIndex, state.spec, state.images);
+    renderPreviewSlide();
+    renderFilmstrip();
   }
 
   // ==========================================================================
