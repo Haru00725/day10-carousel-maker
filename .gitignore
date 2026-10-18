@@ -19,6 +19,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Scratch & Temporary
+scratch/
+
 # Vercel
 .vercel/
 

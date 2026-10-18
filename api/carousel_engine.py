@@ -26,6 +26,19 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 load_dotenv()
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(HERE, "fonts")
+
+def get_navratri_asset_path(filename):
+    for base in [
+        os.path.join(HERE, "assets", "navratri"),
+        os.path.join(HERE, "public", "assets", "navratri"),
+        os.path.join(HERE, "..", "assets", "navratri"),
+        os.path.join(HERE, "..", "public", "assets", "navratri")
+    ]:
+        p = os.path.join(base, filename)
+        if os.path.exists(p):
+            return p
+    return None
+
 FONT_SPECS = {  # key: (file, variable-font weight)
     "rounded": ("Fredoka.ttf", 500), "rounded_bold": ("Fredoka.ttf", 600), "chunky": ("LilitaOne-Regular.ttf", None),
     "hand": ("Caveat.ttf", None), "serif": ("PlayfairDisplay.ttf", None), "serif_italic": ("PlayfairDisplay-Italic.ttf", None),
@@ -36,7 +49,7 @@ SYSTEM_FONTS = ["/System/Library/Fonts/Supplemental/Georgia.ttf", "/System/Libra
                 "/Library/Fonts/Arial.ttf", "C:\\Windows\\Fonts\\arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
 
 FAMILIES = ["scrapbook", "classic", "whimsy", "scribble"]
-STYLES = ["polaroid", "minimal", "film", "poster"]
+STYLES = ["polaroid", "minimal", "film", "poster", "pichwai", "gold_jaali"]
 ELEMENTS = ["tape", "stars", "circles", "squiggle", "dots", "film_border"]
 DEFAULT_MODEL = "gemini-flash-latest"  # override with GEMINI_MODEL in .env
 
@@ -592,7 +605,10 @@ def cover_crop(img, W, H, fx=0.5, fy=0.5, zoom=1.0):
     return img.resize((W, H), Image.LANCZOS, box=(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2))
 
 
-FRAME_DIMS = {"polaroid": (660, 920, 0), "film": (640, 892, 100), "poster": (668, 848, 150), "minimal": (680, 880, 120), "pichwai": (652, 820, 0)}
+FRAME_DIMS = {
+    "polaroid": (660, 920, 0), "film": (640, 892, 100), "poster": (668, 848, 150),
+    "minimal": (680, 880, 120), "pichwai": (640, 902, 0), "gold_jaali": (640, 858, 0)
+}
 
 
 def make_frame(photo, style, theme, caption, font_kind):
@@ -616,27 +632,49 @@ def make_frame(photo, style, theme, caption, font_kind):
         body.putalpha(rounded_mask(body.size, 8))
         cap = caption_layer(caption, body.width, "mono", 32, t["text"], height=100, upper=True)
     elif style == "pichwai":
-        pw, ph, side, top, bottom = 580, 740, 36, 36, 44
-        crimson = (88, 11, 20, 255)
-        gold = (214, 175, 65, 255)
-        ivory = (255, 243, 218, 240)
-        body = Image.new("RGBA", (pw + 2 * side, ph + top + bottom), crimson)
-        d = ImageDraw.Draw(body)
-        d.rectangle([4, 4, body.width - 5, body.height - 5], outline=gold, width=3)
-        d.rectangle([12, 12, body.width - 13, body.height - 13], outline=ivory, width=2)
-        for cx, cy in [(22, 22), (body.width - 23, 22), (22, body.height - 23), (body.width - 23, body.height - 23)]:
-            d.ellipse([cx - 7, cy - 7, cx + 7, cy + 7], fill=gold)
-            d.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], fill=(226, 67, 88, 255))
-        for x in range(36, body.width - 40, 28):
-            d.line([(x, 8), (x + 14, 8)], fill=ivory, width=1)
-            d.line([(x, body.height - 9), (x + 14, body.height - 9)], fill=ivory, width=1)
-        for y in range(36, body.height - 40, 28):
-            d.line([(8, y), (8, y + 14)], fill=ivory, width=1)
-            d.line([(body.width - 9, y), (body.width - 9, y + 14)], fill=ivory, width=1)
-        body.paste(fit_photo(photo, (pw, ph)), (side, top))
-        d.rectangle([side - 2, top - 2, side + pw + 1, top + ph + 1], outline=gold, width=2)
-        body.putalpha(rounded_mask(body.size, 10))
-        cap = None
+        frame_asset = get_navratri_asset_path("pichwai_filigree_frame.png")
+        if frame_asset:
+            raw_f = Image.open(frame_asset).convert("RGBA")
+            fw = 640
+            fh = int(fw * (raw_f.height / raw_f.width))
+            frame_img = raw_f.resize((fw, fh), Image.Resampling.LANCZOS)
+            pw = int(fw * (226 / 308))
+            ph = int(fh * (361 / 434))
+            ox = int(fw * (41 / 308))
+            oy = int(fh * (45 / 434))
+            body = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
+            body.paste(fit_photo(photo, (pw, ph)), (ox, oy))
+            body = Image.alpha_composite(body, frame_img)
+            cap = None
+        else:
+            pw, ph, side, top, bottom = 580, 740, 36, 36, 44
+            crimson = (88, 11, 20, 255)
+            gold = (214, 175, 65, 255)
+            ivory = (255, 243, 218, 240)
+            body = Image.new("RGBA", (pw + 2 * side, ph + top + bottom), crimson)
+            d = ImageDraw.Draw(body)
+            d.rectangle([4, 4, body.width - 5, body.height - 5], outline=gold, width=3)
+            d.rectangle([12, 12, body.width - 13, body.height - 13], outline=ivory, width=2)
+            body.paste(fit_photo(photo, (pw, ph)), (side, top))
+            cap = None
+    elif style == "gold_jaali":
+        frame_asset = get_navratri_asset_path("gold_jaali_frame.png")
+        if frame_asset:
+            raw_f = Image.open(frame_asset).convert("RGBA")
+            fw = 640
+            fh = int(fw * (raw_f.height / raw_f.width))
+            frame_img = raw_f.resize((fw, fh), Image.Resampling.LANCZOS)
+            pw = int(fw * (343 / 896))
+            ph = int(fh * (522 / 1200))
+            ox = int(fw * (277 / 896))
+            oy = int(fh * (343 / 1200))
+            body = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
+            body.paste(fit_photo(photo, (pw, ph)), (ox, oy))
+            body = Image.alpha_composite(body, frame_img)
+            cap = None
+        else:
+            body = fit_photo(photo, (640, 860)).convert("RGBA")
+            cap = None
     elif style == "poster":
         pw, ph, off = 640, 820, 28
         body = Image.new("RGBA", (pw + off, ph + off), (0, 0, 0, 0))
@@ -826,57 +864,101 @@ def draw_diya_shape(d, s, cx, cy, sz):
     d.polygon(flame_core, fill=flame_yellow)
 
 
-def make_music_player(title="Tere Chehre Se Nazar Nahin", artist="Lata Mangeshkar, Kishore Kumar", current="2:57", total="5:02", width=460, height=130):
-    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    card = Image.new("RGBA", (width, height), (24, 12, 14, 238))
-    mask = rounded_mask((width, height), 16)
-    card.putalpha(mask)
-    canvas = Image.alpha_composite(canvas, card)
-    d = ImageDraw.Draw(canvas)
+def make_music_player(title="Chogada", artist="Darshan Raval, Asees Kaur", current="1:48", total="4:11", width=480, height=222):
+    # Check matching Spotify card
+    song_map = {
+        "chogada": "spotify_chogada.png",
+        "tere chehre": "spotify_tere_chehre.png",
+        "dholida": "spotify_dholida.png",
+        "kamariya": "spotify_kamariya.png",
+        "nagada": "spotify_nagada.png",
+    }
+    t_lower = (str(title) + " " + str(artist)).lower()
+    match_file = None
+    for k, v in song_map.items():
+        if k in t_lower:
+            match_file = v
+            break
+    if not match_file and "tere" in t_lower:
+        match_file = "spotify_tere_chehre.png"
+    if not match_file and any(w in t_lower for w in ["chogada", "garba", "navratri"]):
+        match_file = "spotify_chogada.png"
+        
+    if match_file:
+        p = get_navratri_asset_path(match_file)
+        if p:
+            im = Image.open(p).convert("RGBA")
+            h = int(width * (im.height / im.width))
+            return im.resize((width, h), Image.Resampling.LANCZOS)
     
-    t_font = get_font("sans_bold", 20)
-    a_font = get_font("sans", 15)
-    d.text((20, 18), title[:30], font=t_font, fill=(255, 255, 255, 245))
-    d.text((20, 46), artist[:34], font=a_font, fill=(210, 195, 195, 200))
+    # If not matched or custom title, render crisp Spotify style card dynamically
+    scale = 2
+    W, H = width * scale, int(height * scale)
+    card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(card)
+    d.rounded_rectangle([0, 0, W-1, H-1], radius=22*scale, fill=(25, 8, 12, 230), outline=(255, 255, 255, 30), width=2*scale)
+    pad_x, pad_y = 28 * scale, 22 * scale
+    f_title = get_font("sans_bold", 24 * scale)
+    f_artist = get_font("sans", 16 * scale)
+    f_time = get_font("sans", 13 * scale)
     
-    # Clean vector heart icon
-    hx, hy = width - 32, 26
-    d.arc([(hx - 10, hy - 8), (hx, hy + 2)], 180, 0, fill=(240, 220, 220, 220), width=2)
-    d.arc([(hx, hy - 8), (hx + 10, hy + 2)], 180, 0, fill=(240, 220, 220, 220), width=2)
-    d.line([(hx - 10, hy - 3), (hx, hy + 8)], fill=(240, 220, 220, 220), width=2)
-    d.line([(hx + 10, hy - 3), (hx, hy + 8)], fill=(240, 220, 220, 220), width=2)
+    d.text((pad_x, pad_y), str(title)[:30], font=f_title, fill=(255, 255, 255, 255))
+    d.text((pad_x, pad_y + 30 * scale), str(artist)[:36], font=f_artist, fill=(195, 185, 188, 240))
     
-    bar_y = 80
-    d.line([(20, bar_y), (width - 20, bar_y)], fill=(120, 80, 85, 180), width=4)
-    prog_x = int(20 + (width - 40) * 0.58)
-    d.line([(20, bar_y), (prog_x, bar_y)], fill=(255, 255, 255, 240), width=4)
-    d.ellipse([(prog_x - 5, bar_y - 5), (prog_x + 5, bar_y + 5)], fill=(255, 255, 255, 255))
+    # Heart
+    hx, hy = W - pad_x - 14*scale, pad_y + 16*scale
+    r_h = 10 * scale
+    d.line([(hx - r_h, hy), (hx, hy + r_h*1.3), (hx + r_h, hy)], fill=(255, 255, 255, 220), width=2*scale)
+    d.arc([hx - r_h, hy - r_h, hx, hy + 2*scale], 180, 0, fill=(255, 255, 255, 220), width=2*scale)
+    d.arc([hx, hy - r_h, hx + r_h, hy + 2*scale], 180, 0, fill=(255, 255, 255, 220), width=2*scale)
     
-    s_font = get_font("mono", 12)
-    d.text((20, 96), current, font=s_font, fill=(190, 175, 175, 190))
-    d.text((width - 20, 96), total, font=s_font, fill=(190, 175, 175, 190), anchor="ra")
+    # Progress bar
+    bar_y = pad_y + 64 * scale
+    bar_w = W - (pad_x * 2)
+    bar_h = 4 * scale
+    d.rounded_rectangle([pad_x, bar_y, pad_x + bar_w, bar_y + bar_h], radius=2*scale, fill=(255, 255, 255, 60))
+    fill_w = int(bar_w * 0.45)
+    d.rounded_rectangle([pad_x, bar_y, pad_x + fill_w, bar_y + bar_h], radius=2*scale, fill=(255, 255, 255, 255))
+    d.ellipse([pad_x + fill_w - 6*scale, bar_y + (bar_h//2) - 6*scale, pad_x + fill_w + 6*scale, bar_y + (bar_h//2) + 6*scale], fill=(255, 255, 255, 255))
     
-    cx, cy = width // 2, 102
-    d.ellipse([(cx - 15, cy - 15), (cx + 15, cy + 15)], fill=(255, 255, 255, 250))
-    d.polygon([(cx - 4, cy - 6), (cx - 4, cy + 6), (cx + 5, cy)], fill=(20, 10, 12, 255))
-    d.polygon([(cx - 38, cy - 5), (cx - 38, cy + 5), (cx - 44, cy)], fill=(230, 220, 220, 230))
-    d.polygon([(cx + 38, cy - 5), (cx + 38, cy + 5), (cx + 44, cy)], fill=(230, 220, 220, 230))
-    return canvas
+    # Time
+    time_y = bar_y + 10 * scale
+    d.text((pad_x, time_y), current, font=f_time, fill=(180, 175, 178, 220))
+    bb = d.textbbox((0, 0), total, font=f_time)
+    d.text((pad_x + bar_w - (bb[2] - bb[0]), time_y), total, font=f_time, fill=(180, 175, 178, 220))
+    
+    # Controls
+    ctrl_y = H - pad_y - 20 * scale
+    cx = W // 2
+    play_r = 20 * scale
+    d.ellipse([cx - play_r, ctrl_y - play_r, cx + play_r, ctrl_y + play_r], fill=(255, 255, 255, 255))
+    d.polygon([(cx - 8*scale + 2*scale, ctrl_y - 8*scale), (cx + 8*scale + 2*scale, ctrl_y), (cx - 8*scale + 2*scale, ctrl_y + 8*scale)], fill=(20, 8, 12, 255))
+    
+    # Prev / Next
+    d.line([(cx - 65*scale - 10*scale, ctrl_y - 10*scale), (cx - 65*scale - 10*scale, ctrl_y + 10*scale)], fill=(255, 255, 255, 230), width=2*scale)
+    d.polygon([(cx - 65*scale + 8*scale, ctrl_y - 10*scale), (cx - 65*scale - 6*scale, ctrl_y), (cx - 65*scale + 8*scale, ctrl_y + 10*scale)], fill=(255, 255, 255, 230))
+    
+    d.line([(cx + 65*scale + 10*scale, ctrl_y - 10*scale), (cx + 65*scale + 10*scale, ctrl_y + 10*scale)], fill=(255, 255, 255, 230), width=2*scale)
+    d.polygon([(cx + 65*scale - 8*scale, ctrl_y - 10*scale), (cx + 65*scale + 6*scale, ctrl_y), (cx + 65*scale - 8*scale, ctrl_y + 10*scale)], fill=(255, 255, 255, 230))
+    
+    final_h = int(W * (height / width)) // scale
+    return card.resize((width, final_h), Image.Resampling.LANCZOS)
 
 
-def make_feeling_desi_badge(width=280, height=130):
+def make_feeling_desi_badge(width=320, height=150):
+    p = get_navratri_asset_path("feeling_desi.png")
+    if p:
+        im = Image.open(p).convert("RGBA")
+        h = int(width * (im.height / im.width))
+        return im.resize((width, h), Image.Resampling.LANCZOS)
     canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     card = Image.new("RGBA", (width - 16, height - 16), (248, 240, 226, 255))
     d_card = ImageDraw.Draw(card)
     d_card.rectangle([3, 3, card.width - 4, card.height - 4], outline=(160, 120, 100, 120), width=1)
-    
-    # Vector lotus above script
     draw_lotus_shape(d_card, 1, card.width // 2, 22, 28, 26)
-    
     d_card.text((card.width // 2, 56), "Feeling", font=get_font("hand", 36), fill=(70, 15, 20, 255), anchor="mm")
     d_card.text((card.width // 2, 90), "DESI", font=get_font("sans_bold", 28), fill=(180, 20, 30, 255), anchor="mm")
     card.putalpha(rounded_mask(card.size, 8))
-    
     pad = 8
     canvas.paste(card, (pad, pad))
     sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
@@ -884,7 +966,49 @@ def make_feeling_desi_badge(width=280, height=130):
     return Image.alpha_composite(sh.filter(ImageFilter.GaussianBlur(6)), canvas)
 
 
-def make_desi_sticker(kind="lotus", size=130):
+def make_desi_sticker(kind="lotus", size=160):
+    asset_map = {
+        "jhumka": "lotus_jhumka_hd.png",
+        "jhumka_hd": "lotus_jhumka_hd.png",
+        "jhumka_ref": "jhumka_reference.png",
+        "mojri": "embroidered_juttis.png",
+        "juttis": "embroidered_juttis.png",
+        "mojri_ref": "mojri_reference.png",
+        "basket_gajra": "basket_gajra.png",
+        "basket": "basket_gajra.png",
+        "jasmine": "jasmine_gajra.png",
+        "gajra": "jasmine_gajra.png",
+        "jasmine_gajra": "jasmine_gajra.png",
+        "marigold": "marigold_flower.png",
+        "marigold_flower": "marigold_flower.png",
+        "marigold_garland": "marigold_garland.png",
+        "garland": "marigold_garland.png",
+        "pink_lotus": "pink_lotus.png",
+        "lotus": "pink_lotus.png",
+        "dandiya": "dandiya_sticks.png",
+        "dandiya_sticks": "dandiya_sticks.png",
+        "diya": "clay_diya.png",
+        "clay_diya": "clay_diya.png",
+        "chai": "chai_hand.png",
+        "mehndi_chai": "chai_hand.png",
+        "chai_hand": "chai_hand.png",
+        "rickshaw": "rickshaw.png",
+        "auto_rickshaw": "rickshaw.png",
+    }
+    fname = asset_map.get(str(kind).lower())
+    if fname:
+        p = get_navratri_asset_path(fname)
+        if p:
+            im = Image.open(p).convert("RGBA")
+            ratio = im.width / im.height
+            if ratio >= 1:
+                tw = size
+                th = max(1, int(tw / ratio))
+            else:
+                th = size
+                tw = max(1, int(th * ratio))
+            return im.resize((tw, th), Image.Resampling.LANCZOS)
+
     def fn(d, s):
         cx, cy = (size * s) / 2, (size * s) / 2
         sz = size * s * 0.85
@@ -908,7 +1032,20 @@ def make_desi_sticker(kind="lotus", size=130):
     return aa_layer(size, size, fn)
 
 
-def make_lotus_border(width, height=74):
+def make_lotus_border(width, height=125):
+    p = get_navratri_asset_path("pichwai_lotus_tile.png")
+    if p:
+        tile = Image.open(p).convert("RGBA")
+        tw = int(tile.width * (height / tile.height))
+        tile_scaled = tile.resize((tw, height), Image.Resampling.LANCZOS)
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        for x in range(0, width, tw):
+            canvas.paste(tile_scaled, (x, 0))
+        d = ImageDraw.Draw(canvas)
+        d.line([(0, 0), (width, 0)], fill=(214, 175, 65, 255), width=2)
+        d.line([(0, height - 1), (width, height - 1)], fill=(214, 175, 65, 255), width=2)
+        return canvas
+
     canvas = Image.new("RGBA", (width, height), (198, 152, 48, 255))
     d = ImageDraw.Draw(canvas)
     step = 64
@@ -1022,23 +1159,29 @@ def draw_element(canvas, el, ox, W, H, theme, images, seed):
         composite(canvas, torn_layer(W, h, col, int(el.get("jag", 14)), rng), ox, Y - 50)
     elif t == "music_player":
         player = make_music_player(
-            title=str(el.get("title", "Chogada - Loveyatri")),
+            title=str(el.get("title", "Chogada")),
             artist=str(el.get("artist", "Darshan Raval, Asees Kaur")),
-            current=str(el.get("current", "2:57")),
-            total=str(el.get("total", "5:02")),
+            current=str(el.get("current", "1:48")),
+            total=str(el.get("total", "4:11")),
             width=int(el.get("w", 480)),
-            height=int(el.get("h", 136))
+            height=int(el.get("h", 222))
         )
         put(canvas, player, X, Y, rot)
     elif t == "desi_badge":
-        badge = make_feeling_desi_badge(int(el.get("w", 280)), int(el.get("h", 130)))
+        badge = make_feeling_desi_badge(int(el.get("w", 330)), int(el.get("h", 150)))
         put(canvas, badge, X, Y, rot)
     elif t == "desi_sticker":
-        stk = make_desi_sticker(el.get("kind", "lotus"), int(el.get("size", 130)))
+        stk = make_desi_sticker(el.get("kind", "lotus"), int(el.get("size", 160)))
         put(canvas, stk, X, Y, rot)
     elif t == "lotus_border":
-        lb = make_lotus_border(W, int(el.get("h", 72)))
-        composite(canvas, lb, ox, int(Y))
+        lb = make_lotus_border(W, int(el.get("h", 125)))
+        ey = float(el.get("y", 0.5))
+        if ey <= 0.15:
+            composite(canvas, lb, ox, 0)
+        elif ey >= 0.85:
+            composite(canvas, lb, ox, canvas.height - lb.height)
+        else:
+            composite(canvas, lb, ox, int(Y - lb.height // 2))
 
 
 def overlays(img, i, n, spec, theme, on_photo):
@@ -1344,25 +1487,27 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     if cover and not cont:
         slide_offset = 1
         if is_nav:
-            # Recreate the stunning Navratri Desi reference layout!
+            # Recreate the stunning Navratri Desi reference layout with real assets!
             cov_els = [
                 # Top & Bottom Pichwai Lotus Borders
-                E("lotus_border", h=74, x=0.5, y=0.026, z=1),
-                E("lotus_border", h=74, x=0.5, y=0.974, z=1),
+                E("lotus_border", h=125, x=0.5, y=0.04, z=1),
+                E("lotus_border", h=125, x=0.5, y=0.96, z=1),
                 # "Feeling Desi" torn parchment badge
-                E("desi_badge", w=260, h=120, x=0.82, y=0.10, rotate=3, z=2),
-                # Jhumka & Mojri stickers
-                E("desi_sticker", kind="jhumka", size=130, x=0.82, y=0.30, rotate=8, z=2),
-                E("desi_sticker", kind="mojri", size=140, x=0.74, y=0.46, rotate=-16, z=2),
+                E("desi_badge", w=330, h=150, x=0.82, y=0.15, rotate=2, z=2),
+                # Wicker Basket with Gajra & Bangles
+                E("desi_sticker", kind="basket_gajra", size=240, x=0.78, y=0.32, rotate=4, z=2),
+                # Lotus Jhumkas & Embroidered Juttis
+                E("desi_sticker", kind="jhumka", size=180, x=0.76, y=0.48, rotate=6, z=2),
+                E("desi_sticker", kind="mojri", size=240, x=0.72, y=0.62, rotate=-12, z=2),
                 # Pichwai Photo Frame 1 (top-left)
                 E("frame", photo=0, style="pichwai", caption="garba night", font="hand", x=0.31, y=0.35, rotate=-1, z=1),
                 # Instagram / Spotify Music Player card
-                E("music_player", title="Tere Chehre Se Nazar Nahin", artist="Lata Mangeshkar, Kishore Kumar", current="2:57", total="5:02", w=460, h=130, x=0.31, y=0.65, rotate=0, z=2),
+                E("music_player", title="Chogada", artist="Darshan Raval, Asees Kaur", current="1:48", total="4:11", w=480, h=140, x=0.31, y=0.66, rotate=0, z=2),
                 # Bottom stickers: Mehndi Chai & Auto Rickshaw
-                E("desi_sticker", kind="mehndi_chai", size=130, x=0.33, y=0.82, rotate=4, z=2),
-                E("desi_sticker", kind="rickshaw", size=120, x=0.12, y=0.85, rotate=-4, z=2),
+                E("desi_sticker", kind="mehndi_chai", size=170, x=0.33, y=0.83, rotate=4, z=2),
+                E("desi_sticker", kind="rickshaw", size=155, x=0.12, y=0.84, rotate=-4, z=2),
                 # Pichwai Photo Frame 2 (bottom-right)
-                E("frame", photo=(1 if n > 1 else 0), style="pichwai", caption="chogada vibe", font="hand", x=0.76, y=0.70, rotate=1, z=1),
+                E("frame", photo=(1 if n > 1 else 0), style="pichwai", caption="chogada vibe", font="hand", x=0.76, y=0.78, rotate=1, z=1),
                 # Golden sparkles
                 E("star", shape="sparkle4", size=48, x=0.56, y=0.16, rotate=12, color="theme:star", z=2),
                 E("star", shape="sparkle4", size=36, x=0.56, y=0.88, rotate=-8, color="theme:star", z=2),
@@ -1439,8 +1584,8 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         
         if is_nav:
             slide_els = [
-                E("lotus_border", h=74, x=0.5, y=0.026, z=1),
-                E("lotus_border", h=74, x=0.5, y=0.974, z=1),
+                E("lotus_border", h=125, x=0.5, y=0.04, z=1),
+                E("lotus_border", h=125, x=0.5, y=0.96, z=1),
                 E("frame", photo=idx, style=frame_style, caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
                 E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
                   color="theme:tape", alpha=230, z=2),
@@ -1452,15 +1597,17 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                   y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
             ]
             
+            # Rich natural desi stickers with real flowers, dandiya, gajra, and music
             desi_stickers_pool = [
-                [("jhumka", 0.84, 0.22, 8), ("mojri", 0.15, 0.74, -12)],
-                [("mehndi_chai", 0.85, 0.70, 6), ("rickshaw", 0.15, 0.24, -6)],
-                [("lotus", 0.84, 0.22, 0), ("dandiya", 0.15, 0.74, 15)],
-                [("garba", 0.85, 0.70, -8), ("diya", 0.15, 0.24, 5)],
+                [("marigold_garland", 0.5, 0.16, 0), ("jhumka", 0.84, 0.26, 8), ("mojri", 0.15, 0.74, -12)],
+                [("jasmine_gajra", 0.84, 0.22, -6), ("dandiya", 0.16, 0.76, 20), ("mehndi_chai", 0.85, 0.72, 6)],
+                [("marigold", 0.84, 0.22, 10), ("diya", 0.16, 0.24, 0), ("rickshaw", 0.15, 0.74, -6)],
+                [("lotus", 0.84, 0.22, 0), ("basket_gajra", 0.16, 0.76, 4), ("jhumka", 0.85, 0.72, -8)],
             ]
             stk_set = desi_stickers_pool[idx % len(desi_stickers_pool)]
             for kind, sx, sy, srot in stk_set:
-                slide_els.append(E("desi_sticker", kind=kind, size=125, x=sx, y=sy, rotate=srot, z=2))
+                sz = 260 if kind == "marigold_garland" else (210 if kind in ("basket_gajra", "dandiya", "jasmine_gajra") else 165)
+                slide_els.append(E("desi_sticker", kind=kind, size=sz, x=sx, y=sy, rotate=srot, z=2))
                 
             sl[target_idx].update(
                 bg={"mode": "gradient", "bg1": "#580b14", "bg2": "#3e050b"},

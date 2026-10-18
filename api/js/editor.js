@@ -241,6 +241,8 @@ class ScrapbookEditor {
         const imgDataUrl = this.images[photoIdx] || this.images[0];
         if (el.style === 'pichwai') {
           obj = await this.createPichwaiFrameObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 520);
+        } else if (el.style === 'gold_jaali') {
+          obj = await this.createGoldJaaliFrameObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 520);
         } else {
           obj = await this.createPolaroidObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 540);
         }
@@ -248,22 +250,22 @@ class ScrapbookEditor {
       }
 
       case 'music_player': {
-        obj = this.createMusicPlayerObject(el.title, el.artist, el.current, el.total, x, y, angle, el.w || 460, el.h || 130);
+        obj = await this.createMusicPlayerObject(el.title, el.artist, el.current, el.total, x, y, angle, el.w || 460, el.h || 130);
         break;
       }
 
       case 'desi_badge': {
-        obj = this.createFeelingDesiObject(x, y, angle, el.w || 260, el.h || 120);
+        obj = await this.createFeelingDesiObject(x, y, angle, el.w || 260, el.h || 120);
         break;
       }
 
       case 'desi_sticker': {
-        obj = this.createDesiStickerObject(el.kind || 'lotus', x, y, angle, el.size || 120);
+        obj = await this.createDesiStickerObject(el.kind || 'lotus', x, y, angle, el.size || 120);
         break;
       }
 
       case 'lotus_border': {
-        obj = this.createLotusBorderObject(x, y, W, el.h || 74);
+        obj = await this.createLotusBorderObject(x, y, W, el.h || 74);
         break;
       }
 
@@ -411,6 +413,110 @@ class ScrapbookEditor {
 
   createPichwaiFrameObject(imgSrc, caption, fontKey, left, top, angle, width = 520) {
     return new Promise((resolve) => {
+      const frameUrl = '/assets/navratri/pichwai_filigree_frame.png';
+      fabric.Image.fromURL(frameUrl, (frameImg) => {
+        if (!frameImg || !frameImg.width) {
+          resolve(this.createVectorPichwaiFrame(imgSrc, caption, fontKey, left, top, angle, width));
+          return;
+        }
+
+        const fw = width;
+        const fh = width * (frameImg.height / frameImg.width);
+        const ox = fw * (41 / 308);
+        const oy = fh * (45 / 434);
+        const pw = fw * (226 / 308);
+        const ph = fh * (361 / 434);
+
+        frameImg.set({
+          left: 0,
+          top: 0,
+          originX: 'left',
+          originY: 'top',
+          scaleX: fw / frameImg.width,
+          scaleY: fh / frameImg.height
+        });
+
+        fabric.Image.fromURL(imgSrc, (photoImg) => {
+          photoImg.set({
+            left: ox,
+            top: oy,
+            originX: 'left',
+            originY: 'top',
+            scaleX: pw / photoImg.width,
+            scaleY: ph / photoImg.height
+          });
+
+          const group = new fabric.Group([photoImg, frameImg], {
+            left: left,
+            top: top,
+            originX: 'center',
+            originY: 'center',
+            angle: angle,
+            shadow: new fabric.Shadow({ color: 'rgba(20, 4, 6, 0.35)', blur: 18, offsetX: 3, offsetY: 7 }),
+            scrapbookType: 'frame',
+            frameStyle: 'pichwai'
+          });
+
+          resolve(group);
+        }, { crossOrigin: 'anonymous' });
+      }, { crossOrigin: 'anonymous' });
+    });
+  }
+
+  createGoldJaaliFrameObject(imgSrc, caption, fontKey, left, top, angle, width = 520) {
+    return new Promise((resolve) => {
+      const frameUrl = '/assets/navratri/gold_jaali_frame.png';
+      fabric.Image.fromURL(frameUrl, (frameImg) => {
+        if (!frameImg || !frameImg.width) {
+          resolve(this.createVectorPichwaiFrame(imgSrc, caption, fontKey, left, top, angle, width));
+          return;
+        }
+
+        const fw = width;
+        const fh = width * (frameImg.height / frameImg.width);
+        const ox = fw * (277 / 896);
+        const oy = fh * (343 / 1200);
+        const pw = fw * (343 / 896);
+        const ph = fh * (522 / 1200);
+
+        frameImg.set({
+          left: 0,
+          top: 0,
+          originX: 'left',
+          originY: 'top',
+          scaleX: fw / frameImg.width,
+          scaleY: fh / frameImg.height
+        });
+
+        fabric.Image.fromURL(imgSrc, (photoImg) => {
+          photoImg.set({
+            left: ox,
+            top: oy,
+            originX: 'left',
+            originY: 'top',
+            scaleX: pw / photoImg.width,
+            scaleY: ph / photoImg.height
+          });
+
+          const group = new fabric.Group([photoImg, frameImg], {
+            left: left,
+            top: top,
+            originX: 'center',
+            originY: 'center',
+            angle: angle,
+            shadow: new fabric.Shadow({ color: 'rgba(15, 8, 4, 0.35)', blur: 20, offsetX: 4, offsetY: 8 }),
+            scrapbookType: 'frame',
+            frameStyle: 'gold_jaali'
+          });
+
+          resolve(group);
+        }, { crossOrigin: 'anonymous' });
+      }, { crossOrigin: 'anonymous' });
+    });
+  }
+
+  createVectorPichwaiFrame(imgSrc, caption, fontKey, left, top, angle, width = 520) {
+    return new Promise((resolve) => {
       const pad = 24;
       const height = width * 1.25;
 
@@ -473,11 +579,49 @@ class ScrapbookEditor {
         });
 
         resolve(group);
-      });
+      }, { crossOrigin: 'anonymous' });
     });
   }
 
-  createMusicPlayerObject(title = 'Tere Chehre Se Nazar Nahin', artist = 'Lata Mangeshkar, Kishore Kumar', current = '2:57', total = '5:02', left, top, angle = 0, width = 460, height = 130) {
+  createMusicPlayerObject(title = 'Chogada - Loveyatri', artist = 'Darshan Raval, Asees Kaur', current = '2:18', total = '3:45', left, top, angle = 0, width = 460) {
+    return new Promise((resolve) => {
+      let assetUrl = '/assets/navratri/spotify_chogada.png';
+      const t = (title || '').toLowerCase();
+      if (t.includes('tere chehre') || t.includes('chehre')) {
+        assetUrl = '/assets/navratri/spotify_tere_chehre.png';
+      } else if (t.includes('dholida')) {
+        assetUrl = '/assets/navratri/spotify_dholida.png';
+      } else if (t.includes('kamariya')) {
+        assetUrl = '/assets/navratri/spotify_kamariya.png';
+      } else if (t.includes('nagada')) {
+        assetUrl = '/assets/navratri/spotify_nagada.png';
+      }
+
+      fabric.Image.fromURL(assetUrl, (img) => {
+        if (!img || !img.width) {
+          resolve(this.createVectorMusicPlayer(title, artist, current, total, left, top, angle, width, 130));
+          return;
+        }
+        const scale = width / img.width;
+        img.set({
+          left: left,
+          top: top,
+          originX: 'center',
+          originY: 'center',
+          scaleX: scale,
+          scaleY: scale,
+          angle: angle,
+          shadow: new fabric.Shadow({ color: 'rgba(10, 5, 5, 0.4)', blur: 20, offsetX: 3, offsetY: 8 }),
+          scrapbookType: 'music_player',
+          musicTitle: title,
+          musicArtist: artist
+        });
+        resolve(img);
+      }, { crossOrigin: 'anonymous' });
+    });
+  }
+
+  createVectorMusicPlayer(title = 'Tere Chehre Se Nazar Nahin', artist = 'Lata Mangeshkar, Kishore Kumar', current = '2:57', total = '5:02', left, top, angle = 0, width = 460, height = 130) {
     const bg = new fabric.Rect({
       left: 0,
       top: 0,
@@ -616,7 +760,32 @@ class ScrapbookEditor {
     });
   }
 
-  createFeelingDesiObject(left, top, angle = 0, width = 260, height = 120) {
+  createFeelingDesiObject(left, top, angle = 0, width = 260) {
+    return new Promise((resolve) => {
+      const assetUrl = '/assets/navratri/feeling_desi.png';
+      fabric.Image.fromURL(assetUrl, (img) => {
+        if (!img || !img.width) {
+          resolve(this.createVectorDesiBadge(left, top, angle, width));
+          return;
+        }
+        const scale = width / img.width;
+        img.set({
+          left: left,
+          top: top,
+          originX: 'center',
+          originY: 'center',
+          scaleX: scale,
+          scaleY: scale,
+          angle: angle,
+          shadow: new fabric.Shadow({ color: 'rgba(20, 10, 10, 0.3)', blur: 16, offsetX: 2, offsetY: 6 }),
+          scrapbookType: 'desi_badge'
+        });
+        resolve(img);
+      }, { crossOrigin: 'anonymous' });
+    });
+  }
+
+  createVectorDesiBadge(left, top, angle = 0, width = 260, height = 120) {
     const bg = new fabric.Rect({
       left: 0,
       top: 0,
@@ -681,16 +850,73 @@ class ScrapbookEditor {
     });
   }
 
-  createDesiStickerObject(kind, left, top, angle = 0, size = 120) {
+  createDesiStickerObject(kind, left, top, angle = 0, size = 130) {
+    return new Promise((resolve) => {
+      const assetMap = {
+        'jhumka': '/assets/navratri/lotus_jhumka_hd.png',
+        'mojri': '/assets/navratri/embroidered_juttis.png',
+        'basket_gajra': '/assets/navratri/basket_gajra.png',
+        'marigold': '/assets/navratri/marigold_flower.png',
+        'marigold_garland': '/assets/navratri/marigold_garland.png',
+        'jasmine_gajra': '/assets/navratri/jasmine_gajra.png',
+        'pink_lotus': '/assets/navratri/pink_lotus.png',
+        'lotus': '/assets/navratri/pink_lotus.png',
+        'dandiya': '/assets/navratri/dandiya_sticks.png',
+        'diya': '/assets/navratri/clay_diya.png',
+        'chai': '/assets/navratri/chai_hand.png',
+        'mehndi_chai': '/assets/navratri/chai_hand.png',
+        'mehndi-chai': '/assets/navratri/chai_hand.png',
+        'rickshaw': '/assets/navratri/rickshaw.png',
+        'garba': '/assets/navratri/dandiya_sticks.png'
+      };
+
+      const assetUrl = assetMap[kind];
+      if (assetUrl) {
+        fabric.Image.fromURL(assetUrl, (img) => {
+          if (!img || !img.width) {
+            resolve(this.createFallbackSticker(kind, left, top, angle, size));
+            return;
+          }
+          const maxDim = Math.max(img.width, img.height);
+          const scale = size / maxDim;
+
+          img.set({
+            left: left,
+            top: top,
+            originX: 'center',
+            originY: 'center',
+            scaleX: scale,
+            scaleY: scale,
+            angle: angle,
+            shadow: new fabric.Shadow({ color: 'rgba(20, 10, 10, 0.28)', blur: 14, offsetX: 2, offsetY: 5 }),
+            scrapbookType: 'desi_sticker',
+            stickerKind: kind
+          });
+          resolve(img);
+        }, { crossOrigin: 'anonymous' });
+      } else {
+        resolve(this.createFallbackSticker(kind, left, top, angle, size));
+      }
+    });
+  }
+
+  createFallbackSticker(kind, left, top, angle = 0, size = 120) {
     const emojiMap = {
       'jhumka': '🪞',
       'mojri': '🥿',
       'mehndi_chai': '☕',
+      'mehndi-chai': '☕',
+      'chai': '☕',
       'rickshaw': '🛺',
       'lotus': '🪷',
+      'pink_lotus': '🪷',
       'dandiya': '🪘',
       'diya': '🪔',
-      'garba': '💃'
+      'garba': '💃',
+      'marigold': '🌼',
+      'marigold_garland': '🏵️',
+      'jasmine_gajra': '🌸',
+      'basket_gajra': '🧺'
     };
     const symbol = emojiMap[kind] || '🪷';
     return new fabric.IText(symbol, {
@@ -707,6 +933,60 @@ class ScrapbookEditor {
   }
 
   createLotusBorderObject(left, top, width, height = 74) {
+    return new Promise((resolve) => {
+      const tileUrl = '/assets/navratri/pichwai_lotus_tile.png';
+      fabric.Image.fromURL(tileUrl, (masterTile) => {
+        if (!masterTile || !masterTile.width) {
+          resolve(this.createVectorLotusBorder(left, top, width, height));
+          return;
+        }
+
+        const tileScale = height / masterTile.height;
+        const tileW = masterTile.width * tileScale;
+        const count = Math.ceil(width / tileW);
+
+        const bg = new fabric.Rect({
+          left: 0,
+          top: 0,
+          width: width,
+          height: height,
+          fill: '#9e1a22',
+          stroke: '#e6b347',
+          strokeWidth: 2
+        });
+        const items = [bg];
+
+        let cloned = 0;
+        for (let i = 0; i < count; i++) {
+          masterTile.clone((clonedImg) => {
+            clonedImg.set({
+              left: i * tileW,
+              top: 0,
+              originX: 'left',
+              originY: 'top',
+              scaleX: tileScale,
+              scaleY: tileScale
+            });
+            items.push(clonedImg);
+            cloned++;
+            if (cloned === count) {
+              const group = new fabric.Group(items, {
+                left: left,
+                top: top,
+                originX: 'center',
+                originY: 'center',
+                selectable: true,
+                scrapbookType: 'lotus_border'
+              });
+              resolve(group);
+            }
+          });
+        }
+      }, { crossOrigin: 'anonymous' });
+    });
+  }
+
+  createVectorLotusBorder(left, top, width, height = 74) {
     const bg = new fabric.Rect({
       left: 0,
       top: 0,
@@ -1003,6 +1283,14 @@ class ScrapbookEditor {
       });
     }
 
+    const mGoldJaali = document.getElementById('m-add-frame-gold-jaali');
+    if (mGoldJaali) {
+      mGoldJaali.addEventListener('click', () => {
+        this.addGoldJaaliFrameElement();
+        closeSheet();
+      });
+    }
+
     // Torn paper addition
     const mTorn = document.getElementById('m-add-torn-paper');
     if (mTorn) {
@@ -1263,11 +1551,17 @@ class ScrapbookEditor {
     const dPichwai = document.getElementById('add-frame-pichwai');
     if (dPichwai) dPichwai.addEventListener('click', () => this.addPichwaiFrameElement());
 
+    const dGoldJaali = document.getElementById('add-frame-gold-jaali');
+    if (dGoldJaali) dGoldJaali.addEventListener('click', () => this.addGoldJaaliFrameElement());
+
     const dTorn = document.getElementById('add-frame-torn');
     if (dTorn) dTorn.addEventListener('click', () => this.addTornPaperElement());
 
     const dMusic = document.getElementById('add-music-card');
     if (dMusic) dMusic.addEventListener('click', () => this.addMusicPlayerElement());
+
+    const dMusicTere = document.getElementById('add-music-card-tere');
+    if (dMusicTere) dMusicTere.addEventListener('click', () => this.addTereChehreMusicPlayerElement());
 
     const dDesi = document.getElementById('add-desi-badge');
     if (dDesi) dDesi.addEventListener('click', () => this.addFeelingDesiElement());
@@ -1337,7 +1631,7 @@ class ScrapbookEditor {
     this.syncCurrentSlideToSpec();
   }
 
-  addStickerElement(stickerType) {
+  async addStickerElement(stickerType) {
     let obj = null;
     const cx = this.baseWidth / 2;
     const cy = this.baseHeight / 2;
@@ -1371,13 +1665,15 @@ class ScrapbookEditor {
       });
     } else if (stickerType && stickerType.startsWith('desi-')) {
       const kind = stickerType.replace('desi-', '');
-      obj = this.createDesiStickerObject(kind, cx, cy, 0, 130);
+      obj = await this.createDesiStickerObject(kind, cx, cy, 0, 140);
     } else if (stickerType === 'music-card') {
-      obj = this.createMusicPlayerObject('Tere Chehre Se Nazar Nahin', 'Lata Mangeshkar, Kishore Kumar', '2:57', '5:02', cx, cy, 0, 460, 130);
+      obj = await this.createMusicPlayerObject('Chogada - Loveyatri', 'Darshan Raval, Asees Kaur', '2:18', '3:45', cx, cy, 0, 460);
+    } else if (stickerType === 'music-card-tere') {
+      obj = await this.createMusicPlayerObject('Tere Chehre Se Nazar Nahin', 'Lata Mangeshkar, Kishore Kumar', '2:57', '5:02', cx, cy, 0, 460);
     } else if (stickerType === 'desi-badge') {
-      obj = this.createFeelingDesiObject(cx, cy, 0, 260, 120);
+      obj = await this.createFeelingDesiObject(cx, cy, 0, 260);
     } else if (stickerType === 'lotus-border') {
-      obj = this.createLotusBorderObject(cx, this.baseHeight * 0.03, this.baseWidth, 74);
+      obj = await this.createLotusBorderObject(cx, this.baseHeight * 0.03, this.baseWidth, 74);
     }
 
     if (obj) {
@@ -1389,8 +1685,8 @@ class ScrapbookEditor {
     }
   }
 
-  addMusicPlayerElement() {
-    const obj = this.createMusicPlayerObject('Chogada - Loveyatri', 'Darshan Raval, Asees Kaur', '2:18', '3:45', this.baseWidth / 2, this.baseHeight * 0.65, 0, 460, 130);
+  async addMusicPlayerElement(title = 'Chogada - Loveyatri', artist = 'Darshan Raval, Asees Kaur') {
+    const obj = await this.createMusicPlayerObject(title, artist, '2:18', '3:45', this.baseWidth / 2, this.baseHeight * 0.65, 0, 460);
     this.canvas.add(obj);
     this.canvas.setActiveObject(obj);
     this.canvas.renderAll();
@@ -1398,8 +1694,8 @@ class ScrapbookEditor {
     this.syncCurrentSlideToSpec();
   }
 
-  addFeelingDesiElement() {
-    const obj = this.createFeelingDesiObject(this.baseWidth / 2, this.baseHeight / 2, 2, 260, 120);
+  async addTereChehreMusicPlayerElement() {
+    const obj = await this.createMusicPlayerObject('Tere Chehre Se Nazar Nahin', 'Lata Mangeshkar, Kishore Kumar', '2:57', '5:02', this.baseWidth / 2, this.baseHeight * 0.65, 0, 460);
     this.canvas.add(obj);
     this.canvas.setActiveObject(obj);
     this.canvas.renderAll();
@@ -1407,9 +1703,18 @@ class ScrapbookEditor {
     this.syncCurrentSlideToSpec();
   }
 
-  addLotusBorderElement(top = true) {
+  async addFeelingDesiElement() {
+    const obj = await this.createFeelingDesiObject(this.baseWidth / 2, this.baseHeight / 2, 2, 260);
+    this.canvas.add(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
+  }
+
+  async addLotusBorderElement(top = true) {
     const y = top ? (this.baseHeight * 0.026) : (this.baseHeight * 0.974);
-    const obj = this.createLotusBorderObject(this.baseWidth / 2, y, this.baseWidth, 74);
+    const obj = await this.createLotusBorderObject(this.baseWidth / 2, y, this.baseWidth, 74);
     this.canvas.add(obj);
     this.canvas.sendToBack(obj);
     this.canvas.setActiveObject(obj);
@@ -1422,6 +1727,17 @@ class ScrapbookEditor {
     const photoIdx = this.currentSlideIndex % (this.images.length || 1);
     const imgSrc = this.images[photoIdx] || this.images[0];
     const obj = await this.createPichwaiFrameObject(imgSrc, 'garba glow', 'hand', this.baseWidth / 2, this.baseHeight / 2, 0, 520);
+    this.canvas.add(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
+  }
+
+  async addGoldJaaliFrameElement() {
+    const photoIdx = this.currentSlideIndex % (this.images.length || 1);
+    const imgSrc = this.images[photoIdx] || this.images[0];
+    const obj = await this.createGoldJaaliFrameObject(imgSrc, 'shubh navratri', 'hand', this.baseWidth / 2, this.baseHeight / 2, 0, 520);
     this.canvas.add(obj);
     this.canvas.setActiveObject(obj);
     this.canvas.renderAll();

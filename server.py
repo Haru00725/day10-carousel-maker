@@ -82,6 +82,14 @@ def serve_fonts(filename):
     return "Font not found", 404
 
 
+@app.route("/assets/<path:filename>")
+def serve_assets(filename):
+    path = find_static_file(os.path.join("assets", filename))
+    if path:
+        return send_file(path)
+    return "Asset not found", 404
+
+
 # ==================== API ROUTING DISPATCHER ====================
 def get_target_endpoint():
     endpoint = request.args.get("endpoint")
