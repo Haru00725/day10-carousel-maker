@@ -239,7 +239,31 @@ class ScrapbookEditor {
       case 'frame': {
         const photoIdx = el.photo || 0;
         const imgDataUrl = this.images[photoIdx] || this.images[0];
-        obj = await this.createPolaroidObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 540);
+        if (el.style === 'pichwai') {
+          obj = await this.createPichwaiFrameObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 520);
+        } else {
+          obj = await this.createPolaroidObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 540);
+        }
+        break;
+      }
+
+      case 'music_player': {
+        obj = this.createMusicPlayerObject(el.title, el.artist, el.current, el.total, x, y, angle, el.w || 460, el.h || 130);
+        break;
+      }
+
+      case 'desi_badge': {
+        obj = this.createFeelingDesiObject(x, y, angle, el.w || 260, el.h || 120);
+        break;
+      }
+
+      case 'desi_sticker': {
+        obj = this.createDesiStickerObject(el.kind || 'lotus', x, y, angle, el.size || 120);
+        break;
+      }
+
+      case 'lotus_border': {
+        obj = this.createLotusBorderObject(x, y, W, el.h || 74);
         break;
       }
 
@@ -382,6 +406,342 @@ class ScrapbookEditor {
 
         resolve(group);
       });
+    });
+  }
+
+  createPichwaiFrameObject(imgSrc, caption, fontKey, left, top, angle, width = 520) {
+    return new Promise((resolve) => {
+      const pad = 24;
+      const height = width * 1.25;
+
+      fabric.Image.fromURL(imgSrc, (img) => {
+        const photoW = width - pad * 2;
+        const photoH = height - pad * 2;
+
+        img.set({
+          left: pad,
+          top: pad,
+          originX: 'left',
+          originY: 'top',
+          scaleX: photoW / img.width,
+          scaleY: photoH / img.height,
+        });
+
+        const bgRect = new fabric.Rect({
+          left: 0,
+          top: 0,
+          width: width,
+          height: height,
+          fill: '#580b14',
+          stroke: '#d6af41',
+          strokeWidth: 4,
+          rx: 8,
+          ry: 8,
+          shadow: new fabric.Shadow({ color: 'rgba(20, 4, 6, 0.35)', blur: 16, offsetX: 2, offsetY: 6 })
+        });
+
+        const innerBorder = new fabric.Rect({
+          left: 10,
+          top: 10,
+          width: width - 20,
+          height: height - 20,
+          fill: 'transparent',
+          stroke: '#fff3da',
+          strokeWidth: 2,
+          rx: 4,
+          ry: 4
+        });
+
+        const photoBorder = new fabric.Rect({
+          left: pad - 2,
+          top: pad - 2,
+          width: photoW + 4,
+          height: photoH + 4,
+          fill: 'transparent',
+          stroke: '#d6af41',
+          strokeWidth: 2
+        });
+
+        const group = new fabric.Group([bgRect, innerBorder, img, photoBorder], {
+          left: left,
+          top: top,
+          originX: 'center',
+          originY: 'center',
+          angle: angle,
+          scrapbookType: 'frame',
+          frameStyle: 'pichwai'
+        });
+
+        resolve(group);
+      });
+    });
+  }
+
+  createMusicPlayerObject(title = 'Tere Chehre Se Nazar Nahin', artist = 'Lata Mangeshkar, Kishore Kumar', current = '2:57', total = '5:02', left, top, angle = 0, width = 460, height = 130) {
+    const bg = new fabric.Rect({
+      left: 0,
+      top: 0,
+      width: width,
+      height: height,
+      fill: 'rgba(24, 12, 14, 0.94)',
+      rx: 14,
+      ry: 14,
+      shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.3)', blur: 12, offsetX: 0, offsetY: 4 })
+    });
+
+    const titleText = new fabric.IText((title || 'Chogada - Loveyatri').slice(0, 28), {
+      left: 20,
+      top: 16,
+      originX: 'left',
+      originY: 'top',
+      fontFamily: 'Poppins',
+      fontWeight: 'bold',
+      fontSize: 18,
+      fill: '#ffffff'
+    });
+
+    const artistText = new fabric.IText((artist || 'Darshan Raval, Asees Kaur').slice(0, 32), {
+      left: 20,
+      top: 42,
+      originX: 'left',
+      originY: 'top',
+      fontFamily: 'Poppins',
+      fontSize: 13,
+      fill: '#d2c3c3'
+    });
+
+    const heartIcon = new fabric.IText('♡', {
+      left: width - 30,
+      top: 24,
+      originX: 'center',
+      originY: 'center',
+      fontFamily: 'Poppins',
+      fontSize: 22,
+      fill: '#f0dcdc'
+    });
+
+    const barY = 76;
+    const barBg = new fabric.Line([20, barY, width - 20, barY], {
+      stroke: 'rgba(120, 80, 85, 0.7)',
+      strokeWidth: 4,
+      strokeLineCap: 'round'
+    });
+
+    const progX = 20 + (width - 40) * 0.58;
+    const barProg = new fabric.Line([20, barY, progX, barY], {
+      stroke: '#ffffff',
+      strokeWidth: 4,
+      strokeLineCap: 'round'
+    });
+
+    const thumb = new fabric.Circle({
+      left: progX,
+      top: barY,
+      radius: 5,
+      originX: 'center',
+      originY: 'center',
+      fill: '#ffffff'
+    });
+
+    const curText = new fabric.IText(current || '2:57', {
+      left: 20,
+      top: 92,
+      originX: 'left',
+      originY: 'top',
+      fontFamily: 'Space Mono',
+      fontSize: 11,
+      fill: '#c0b0b0'
+    });
+
+    const totText = new fabric.IText(total || '5:02', {
+      left: width - 20,
+      top: 92,
+      originX: 'right',
+      originY: 'top',
+      fontFamily: 'Space Mono',
+      fontSize: 11,
+      fill: '#c0b0b0'
+    });
+
+    const cx = width / 2;
+    const cy = 98;
+    const playCircle = new fabric.Circle({
+      left: cx,
+      top: cy,
+      radius: 14,
+      originX: 'center',
+      originY: 'center',
+      fill: '#ffffff'
+    });
+    const playTriangle = new fabric.Triangle({
+      left: cx + 1,
+      top: cy,
+      width: 10,
+      height: 12,
+      angle: 90,
+      originX: 'center',
+      originY: 'center',
+      fill: '#180c0e'
+    });
+
+    const prevIcon = new fabric.Triangle({
+      left: cx - 36,
+      top: cy,
+      width: 8,
+      height: 10,
+      angle: -90,
+      originX: 'center',
+      originY: 'center',
+      fill: '#e6dede'
+    });
+
+    const nextIcon = new fabric.Triangle({
+      left: cx + 36,
+      top: cy,
+      width: 8,
+      height: 10,
+      angle: 90,
+      originX: 'center',
+      originY: 'center',
+      fill: '#e6dede'
+    });
+
+    return new fabric.Group([bg, titleText, artistText, heartIcon, barBg, barProg, thumb, curText, totText, playCircle, playTriangle, prevIcon, nextIcon], {
+      left: left,
+      top: top,
+      originX: 'center',
+      originY: 'center',
+      angle: angle,
+      scrapbookType: 'music_player'
+    });
+  }
+
+  createFeelingDesiObject(left, top, angle = 0, width = 260, height = 120) {
+    const bg = new fabric.Rect({
+      left: 0,
+      top: 0,
+      width: width,
+      height: height,
+      fill: '#f8f0e2',
+      stroke: '#d4bfa8',
+      strokeWidth: 1.5,
+      rx: 6,
+      ry: 6,
+      shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.18)', blur: 8, offsetX: 1, offsetY: 3 })
+    });
+
+    const inner = new fabric.Rect({
+      left: 6,
+      top: 6,
+      width: width - 12,
+      height: height - 12,
+      fill: 'transparent',
+      stroke: '#c0a088',
+      strokeWidth: 1,
+      rx: 4,
+      ry: 4
+    });
+
+    const lotus = new fabric.IText('🪷', {
+      left: width / 2,
+      top: 24,
+      originX: 'center',
+      originY: 'center',
+      fontSize: 22
+    });
+
+    const script = new fabric.IText('Feeling', {
+      left: width / 2,
+      top: 52,
+      originX: 'center',
+      originY: 'center',
+      fontFamily: 'Caveat',
+      fontSize: 34,
+      fill: '#460f14'
+    });
+
+    const caps = new fabric.IText('DESI', {
+      left: width / 2,
+      top: 86,
+      originX: 'center',
+      originY: 'center',
+      fontFamily: 'Poppins',
+      fontWeight: 'bold',
+      fontSize: 26,
+      fill: '#b4141e'
+    });
+
+    return new fabric.Group([bg, inner, lotus, script, caps], {
+      left: left,
+      top: top,
+      originX: 'center',
+      originY: 'center',
+      angle: angle,
+      scrapbookType: 'desi_badge'
+    });
+  }
+
+  createDesiStickerObject(kind, left, top, angle = 0, size = 120) {
+    const emojiMap = {
+      'jhumka': '🪞',
+      'mojri': '🥿',
+      'mehndi_chai': '☕',
+      'rickshaw': '🛺',
+      'lotus': '🪷',
+      'dandiya': '🪘',
+      'diya': '🪔',
+      'garba': '💃'
+    };
+    const symbol = emojiMap[kind] || '🪷';
+    return new fabric.IText(symbol, {
+      left: left,
+      top: top,
+      originX: 'center',
+      originY: 'center',
+      fontSize: size * 0.75,
+      angle: angle,
+      shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.22)', blur: 6, offsetX: 1, offsetY: 2 }),
+      scrapbookType: 'desi_sticker',
+      stickerKind: kind
+    });
+  }
+
+  createLotusBorderObject(left, top, width, height = 74) {
+    const bg = new fabric.Rect({
+      left: 0,
+      top: 0,
+      width: width,
+      height: height,
+      fill: '#c69830',
+      stroke: '#fff0c8',
+      strokeWidth: 2
+    });
+
+    const items = [bg];
+    const step = 64;
+    const count = Math.ceil(width / step);
+    for (let i = 0; i < count; i++) {
+      const tileLine = new fabric.Line([i * step, 0, i * step, height], {
+        stroke: 'rgba(150, 110, 30, 0.6)',
+        strokeWidth: 1
+      });
+      const lotus = new fabric.IText('🪷', {
+        left: i * step + step / 2,
+        top: height / 2 - 2,
+        originX: 'center',
+        originY: 'center',
+        fontSize: 26
+      });
+      items.push(tileLine, lotus);
+    }
+
+    return new fabric.Group(items, {
+      left: left,
+      top: top,
+      originX: 'center',
+      originY: 'center',
+      selectable: true,
+      scrapbookType: 'lotus_border'
     });
   }
 
@@ -630,6 +990,15 @@ class ScrapbookEditor {
     if (mStamp) {
       mStamp.addEventListener('click', () => {
         this.addTextElement('01 / MEMORY ARCHIVE', 'Space Mono', 32, false);
+        closeSheet();
+      });
+    }
+
+    // Pichwai frame addition
+    const mPichwai = document.getElementById('m-add-frame-pichwai');
+    if (mPichwai) {
+      mPichwai.addEventListener('click', () => {
+        this.addPichwaiFrameElement();
         closeSheet();
       });
     }
@@ -891,8 +1260,27 @@ class ScrapbookEditor {
     const dPol = document.getElementById('add-frame-polaroid');
     if (dPol) dPol.addEventListener('click', () => this.addPolaroidElement());
 
+    const dPichwai = document.getElementById('add-frame-pichwai');
+    if (dPichwai) dPichwai.addEventListener('click', () => this.addPichwaiFrameElement());
+
     const dTorn = document.getElementById('add-frame-torn');
     if (dTorn) dTorn.addEventListener('click', () => this.addTornPaperElement());
+
+    const dMusic = document.getElementById('add-music-card');
+    if (dMusic) dMusic.addEventListener('click', () => this.addMusicPlayerElement());
+
+    const dDesi = document.getElementById('add-desi-badge');
+    if (dDesi) dDesi.addEventListener('click', () => this.addFeelingDesiElement());
+
+    const dLotus = document.getElementById('add-lotus-border');
+    if (dLotus) dLotus.addEventListener('click', () => this.addLotusBorderElement(true));
+
+    document.querySelectorAll('.desi-text-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const text = btn.dataset.text || btn.textContent.trim();
+        this.addTextElement(text, 'Caveat', 50, false);
+      });
+    });
 
     document.querySelectorAll('.paper-swatch:not(.m-paper-swatch)').forEach((swatch) => {
       swatch.addEventListener('click', () => {
@@ -981,6 +1369,15 @@ class ScrapbookEditor {
         angle: 45,
         scrapbookType: 'sticker'
       });
+    } else if (stickerType && stickerType.startsWith('desi-')) {
+      const kind = stickerType.replace('desi-', '');
+      obj = this.createDesiStickerObject(kind, cx, cy, 0, 130);
+    } else if (stickerType === 'music-card') {
+      obj = this.createMusicPlayerObject('Tere Chehre Se Nazar Nahin', 'Lata Mangeshkar, Kishore Kumar', '2:57', '5:02', cx, cy, 0, 460, 130);
+    } else if (stickerType === 'desi-badge') {
+      obj = this.createFeelingDesiObject(cx, cy, 0, 260, 120);
+    } else if (stickerType === 'lotus-border') {
+      obj = this.createLotusBorderObject(cx, this.baseHeight * 0.03, this.baseWidth, 74);
     }
 
     if (obj) {
@@ -990,6 +1387,46 @@ class ScrapbookEditor {
       this.saveHistoryState();
       this.syncCurrentSlideToSpec();
     }
+  }
+
+  addMusicPlayerElement() {
+    const obj = this.createMusicPlayerObject('Chogada - Loveyatri', 'Darshan Raval, Asees Kaur', '2:18', '3:45', this.baseWidth / 2, this.baseHeight * 0.65, 0, 460, 130);
+    this.canvas.add(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
+  }
+
+  addFeelingDesiElement() {
+    const obj = this.createFeelingDesiObject(this.baseWidth / 2, this.baseHeight / 2, 2, 260, 120);
+    this.canvas.add(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
+  }
+
+  addLotusBorderElement(top = true) {
+    const y = top ? (this.baseHeight * 0.026) : (this.baseHeight * 0.974);
+    const obj = this.createLotusBorderObject(this.baseWidth / 2, y, this.baseWidth, 74);
+    this.canvas.add(obj);
+    this.canvas.sendToBack(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
+  }
+
+  async addPichwaiFrameElement() {
+    const photoIdx = this.currentSlideIndex % (this.images.length || 1);
+    const imgSrc = this.images[photoIdx] || this.images[0];
+    const obj = await this.createPichwaiFrameObject(imgSrc, 'garba glow', 'hand', this.baseWidth / 2, this.baseHeight / 2, 0, 520);
+    this.canvas.add(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
   }
 
   async addPolaroidElement() {

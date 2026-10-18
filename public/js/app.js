@@ -40,6 +40,10 @@
     {
       name: 'Midnight Journal',
       colors: ['#f4efe6', '#ffd166', '#e2dcd2', '#e5b869', '#2b2b34']
+    },
+    {
+      name: 'Royal Crimson & Pichwai',
+      colors: ['#580b14', '#f3b334', '#fedec6', '#e24358', '#fff1d6']
     }
   ];
 
@@ -569,35 +573,68 @@
       'Midnight Journal': {
         title: '#f4efe6', star: '#ffd166', hl: '#e5b869', note: '#e2dcd2',
         band: '#2b2b34', tape: '#d9ab55', bg1: '#201f26', bg2: '#16161b'
+      },
+      'Royal Crimson & Pichwai': {
+        title: '#ffffff', star: '#f3b334', hl: '#e24358', note: '#fedec6',
+        band: '#38060c', tape: '#d49b45', bg1: '#580b14', bg2: '#3e050b'
       }
     };
 
-    const theme = paletteMap[preset] || paletteMap['Warm Cream & Espresso'];
-    const storyHeadline = hint ? hint.toUpperCase() : 'SWEET MEMORIES';
+    const isNav = preset === 'Royal Crimson & Pichwai' || /navratri|garba|dandiya|desi|chogada|pichwai/i.test(hint || '');
+    const activePreset = isNav ? 'Royal Crimson & Pichwai' : preset;
+    const theme = paletteMap[activePreset] || paletteMap['Warm Cream & Espresso'];
+    const storyHeadline = hint ? hint.toUpperCase() : (isNav ? 'NAVRATRI DUMP' : 'SWEET MEMORIES');
     const slides = [];
 
     // Cover Slide (only if cover is checked and not in continuous panorama mode)
     if (cover && !cont) {
-      slides.push({
-        bg: { mode: 'gradient' },
-        elements: [
-          { type: 'torn', y: 0.62, h: Math.round(0.32 * H), color: 'theme:band', z: 0 },
-          { type: 'tape', w: 230, h: 56, x: 0.28, y: 0.09, rotate: -8, color: 'theme:tape', alpha: 220, z: 2 },
-          { type: 'tape', w: 210, h: 54, x: 0.74, y: 0.10, rotate: 6, color: 'theme:tape', alpha: 220, z: 2 },
-          { type: 'frame', photo: 0, style: 'polaroid', caption: 'moment 01', font: 'hand', x: 0.5, y: 0.38, rotate: -2.5, z: 1 },
-          { type: 'text', text: 'SCRAPBOOK STORY', font: 'sans_bold', size: 32, color: 'theme:star', tracking: 4, x: 0.5, y: 0.64, z: 1 },
-          { type: 'text', text: storyHeadline, font: 'serif', size: 76, color: 'theme:title', x: 0.5, y: 0.72, z: 1 },
-          { type: 'text', text: 'flip through our favorite moments', font: 'hand', size: 54, color: 'theme:note', x: 0.48, y: 0.84, rotate: -1, z: 1 },
-          { type: 'arrow', x: 0.74, y: 0.85, angle: 10, color: 'theme:note', z: 2 },
-          { type: 'text', text: 'swipe →', font: 'hand', size: 44, color: 'theme:note', x: 0.84, y: 0.91, rotate: 4, z: 2 },
-          { type: 'star', shape: 'sparkle4', size: 54, x: 0.15, y: 0.66, rotate: -12, color: 'theme:star', z: 2 },
-          { type: 'star', shape: 'sparkle4', size: 38, x: 0.86, y: 0.68, rotate: 15, color: 'theme:star', z: 2 }
-        ]
-      });
+      if (isNav) {
+        slides.push({
+          bg: { mode: 'gradient' },
+          elements: [
+            { type: 'lotus_border', h: 74, x: 0.5, y: 0.026, z: 1 },
+            { type: 'lotus_border', h: 74, x: 0.5, y: 0.974, z: 1 },
+            { type: 'desi_badge', w: 260, h: 120, x: 0.82, y: 0.10, rotate: 3, z: 2 },
+            { type: 'desi_sticker', kind: 'jhumka', size: 130, x: 0.82, y: 0.30, rotate: 8, z: 2 },
+            { type: 'desi_sticker', kind: 'mojri', size: 140, x: 0.74, y: 0.46, rotate: -16, z: 2 },
+            { type: 'frame', photo: 0, style: 'pichwai', caption: 'garba night', font: 'hand', x: 0.31, y: 0.35, rotate: -1, z: 1 },
+            { type: 'music_player', title: 'Tere Chehre Se Nazar Nahin', artist: 'Lata Mangeshkar, Kishore Kumar', current: '2:57', total: '5:02', w: 460, h: 130, x: 0.31, y: 0.65, rotate: 0, z: 2 },
+            { type: 'desi_sticker', kind: 'mehndi_chai', size: 130, x: 0.33, y: 0.82, rotate: 4, z: 2 },
+            { type: 'desi_sticker', kind: 'rickshaw', size: 120, x: 0.12, y: 0.85, rotate: -4, z: 2 },
+            { type: 'frame', photo: (n > 1 ? 1 : 0), style: 'pichwai', caption: 'chogada vibe', font: 'hand', x: 0.76, y: 0.70, rotate: 1, z: 1 },
+            { type: 'star', shape: 'sparkle4', size: 48, x: 0.56, y: 0.16, rotate: 12, color: 'theme:star', z: 2 },
+            { type: 'star', shape: 'sparkle4', size: 36, x: 0.56, y: 0.88, rotate: -8, color: 'theme:star', z: 2 }
+          ]
+        });
+      } else {
+        slides.push({
+          bg: { mode: 'gradient' },
+          elements: [
+            { type: 'torn', y: 0.62, h: Math.round(0.32 * H), color: 'theme:band', z: 0 },
+            { type: 'tape', w: 230, h: 56, x: 0.28, y: 0.09, rotate: -8, color: 'theme:tape', alpha: 220, z: 2 },
+            { type: 'tape', w: 210, h: 54, x: 0.74, y: 0.10, rotate: 6, color: 'theme:tape', alpha: 220, z: 2 },
+            { type: 'frame', photo: 0, style: 'polaroid', caption: 'moment 01', font: 'hand', x: 0.5, y: 0.38, rotate: -2.5, z: 1 },
+            { type: 'text', text: 'SCRAPBOOK STORY', font: 'sans_bold', size: 32, color: 'theme:star', tracking: 4, x: 0.5, y: 0.64, z: 1 },
+            { type: 'text', text: storyHeadline, font: 'serif', size: 76, color: 'theme:title', x: 0.5, y: 0.72, z: 1 },
+            { type: 'text', text: 'flip through our favorite moments', font: 'hand', size: 54, color: 'theme:note', x: 0.48, y: 0.84, rotate: -1, z: 1 },
+            { type: 'arrow', x: 0.74, y: 0.85, angle: 10, color: 'theme:note', z: 2 },
+            { type: 'text', text: 'swipe →', font: 'hand', size: 44, color: 'theme:note', x: 0.84, y: 0.91, rotate: 4, z: 2 },
+            { type: 'star', shape: 'sparkle4', size: 54, x: 0.15, y: 0.66, rotate: -12, color: 'theme:star', z: 2 },
+            { type: 'star', shape: 'sparkle4', size: 38, x: 0.86, y: 0.68, rotate: 15, color: 'theme:star', z: 2 }
+          ]
+        });
+      }
     }
 
     // Story Slides
-    const sampleNotes = [
+    const sampleNotes = isNav ? [
+      'chogada on repeat 🎧',
+      'lehenga twirls & jhumka swish 💃',
+      'garba nights & glowing lights ✨',
+      'nine nights of sheer magic 🪷',
+      'kesariyo rang 🧡',
+      'midnight garba & post-dance chai ☕'
+    ] : [
       'Golden hour lights and easy smiles',
       'A little corner of peace we stumbled upon',
       'Taking the long way back home',
@@ -605,6 +642,8 @@
       'One of those days you want to replay',
       'Laughter that made our stomachs hurt'
     ];
+
+    const navTitles = ['chogada mood', 'garba queen', 'twirl time', 'dandiya beats', 'sajna vibes', 'festive glow'];
 
     for (let i = 0; i < n; i++) {
       let cx = 0.5;
@@ -630,22 +669,39 @@
       }
 
       const note = sampleNotes[i % sampleNotes.length];
+      const captionTitle = isNav ? navTitles[i % navTitles.length] : `memory 0${i + 1}`;
+      const frameStyle = isNav ? 'pichwai' : 'polaroid';
 
-      const els = [
-        { type: 'torn', y: 0.76, h: Math.round(0.24 * H), color: 'theme:band', z: 0 },
-        { type: 'frame', photo: i, style: 'polaroid', caption: `memory 0${i + 1}`, font: 'hand', x: cx, y: cy, rotate: rot, z: 1 },
-        { type: 'tape', w: 220, h: 54, x: cx, y: cy - 0.28, rotate: rot - 4, color: 'theme:tape', alpha: 230, z: 2 },
-        { type: 'text', text: note, font: 'hand', size: 54, color: 'theme:note', max_w: 0.8, x: cx, y: 0.86, rotate: 1, z: 1 },
-        { type: 'star', shape: 'sparkle4', size: 52, x: i % 2 === 0 ? 0.14 : 0.86, y: 0.18, color: 'theme:star', z: 2 },
-        { type: 'star', shape: 'sparkle4', size: 36, x: i % 2 === 0 ? 0.88 : 0.12, y: 0.72, color: 'theme:star', z: 2 }
-      ];
+      let els = [];
+      if (isNav) {
+        els = [
+          { type: 'lotus_border', h: 74, x: 0.5, y: 0.026, z: 1 },
+          { type: 'lotus_border', h: 74, x: 0.5, y: 0.974, z: 1 },
+          { type: 'frame', photo: i, style: frameStyle, caption: captionTitle, font: 'hand', x: cx, y: cy, rotate: rot, z: 1 },
+          { type: 'tape', w: 220, h: 54, x: cx, y: cy - 0.28, rotate: rot - 4, color: 'theme:tape', alpha: 230, z: 2 },
+          { type: 'text', text: note, font: 'hand', size: 52, color: 'theme:note', max_w: 0.82, x: cx, y: 0.86, rotate: 1, z: 1 },
+          { type: 'star', shape: 'sparkle4', size: 52, x: i % 2 === 0 ? 0.14 : 0.86, y: 0.18, color: 'theme:star', z: 2 },
+          { type: 'star', shape: 'sparkle4', size: 36, x: i % 2 === 0 ? 0.88 : 0.12, y: 0.72, color: 'theme:star', z: 2 }
+        ];
+        const desiStickers = ['jhumka', 'mojri', 'lotus', 'dandiya', 'garba', 'diya'];
+        els.push({ type: 'desi_sticker', kind: desiStickers[i % desiStickers.length], size: 125, x: i % 2 === 0 ? 0.84 : 0.15, y: 0.24, rotate: 8, z: 2 });
+      } else {
+        els = [
+          { type: 'torn', y: 0.76, h: Math.round(0.24 * H), color: 'theme:band', z: 0 },
+          { type: 'frame', photo: i, style: frameStyle, caption: captionTitle, font: 'hand', x: cx, y: cy, rotate: rot, z: 1 },
+          { type: 'tape', w: 220, h: 54, x: cx, y: cy - 0.28, rotate: rot - 4, color: 'theme:tape', alpha: 230, z: 2 },
+          { type: 'text', text: note, font: 'hand', size: 54, color: 'theme:note', max_w: 0.8, x: cx, y: 0.86, rotate: 1, z: 1 },
+          { type: 'star', shape: 'sparkle4', size: 52, x: i % 2 === 0 ? 0.14 : 0.86, y: 0.18, color: 'theme:star', z: 2 },
+          { type: 'star', shape: 'sparkle4', size: 36, x: i % 2 === 0 ? 0.88 : 0.12, y: 0.72, color: 'theme:star', z: 2 }
+        ];
 
-      if (!cont) {
-        if (n > 1 && i % 2 === 1) {
-          els.push({ type: 'inset', photo: (i + 1) % n, w: 200, label: 'detail', x: 0.82, y: 0.22, rotate: 6, color: 'theme:note', z: 2 });
-          els.push({ type: 'tape', w: 120, h: 40, x: 0.82, y: 0.14, rotate: -10, color: 'theme:hl', alpha: 200, z: 3 });
-        } else if (i % 2 === 0) {
-          els.push({ type: 'squiggle', span: 0.45, x: 0.5, y: 0.92, color: 'theme:hl', z: 2 });
+        if (!cont) {
+          if (n > 1 && i % 2 === 1) {
+            els.push({ type: 'inset', photo: (i + 1) % n, w: 200, label: 'detail', x: 0.82, y: 0.22, rotate: 6, color: 'theme:note', z: 2 });
+            els.push({ type: 'tape', w: 120, h: 40, x: 0.82, y: 0.14, rotate: -10, color: 'theme:hl', alpha: 200, z: 3 });
+          } else if (i % 2 === 0) {
+            els.push({ type: 'squiggle', span: 0.45, x: 0.5, y: 0.92, color: 'theme:hl', z: 2 });
+          }
         }
       }
 

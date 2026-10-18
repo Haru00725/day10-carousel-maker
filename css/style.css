@@ -1262,6 +1262,21 @@ input:checked + .slider:before {
   margin-bottom: 0.2rem;
 }
 
+.desi-text-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-primary);
+}
+.desi-text-btn:hover {
+  background: #fff8f0;
+  border-color: #d6af41;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(214, 175, 65, 0.2);
+}
+
 /* Paper Swatches */
 .paper-swatch-list {
   display: flex;

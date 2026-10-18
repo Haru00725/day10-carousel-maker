@@ -46,6 +46,7 @@ PRESETS = {  # title, star, note, highlight
     "Vintage Rose": ("#3e282b", "#d49b45", "#6c4d51", "#e2a8a8"),
     "Terracotta & Clay": ("#3b2b25", "#e29b68", "#66493e", "#c97a5b"),
     "Midnight Journal": ("#f4efe6", "#ffd166", "#e2dcd2", "#e5b869"),
+    "Royal Crimson & Pichwai": ("#fff1d6", "#f3b334", "#fedec6", "#e24358"),
     "Bubblegum": ("#ffa0e2", "#f7e23a", "#ffffff", "#fae23c"),
 }
 _font_cache = {}
@@ -142,40 +143,38 @@ def make_theme(colors, tone, preset="Bubblegum"):
 def apply_preset(theme, name):
     if name in PRESETS:
         theme["title"], theme["star"], theme["note"], theme["hl"] = PRESETS[name]
+        if name == "Royal Crimson & Pichwai":
+            theme["bg1"] = "#580b14"
+            theme["bg2"] = "#3e050b"
+            theme["tape"] = "#d49b45"
+            theme["band"] = "#38060c"
+            theme["text"] = "#fff1d6"
+            theme["paper"] = (255, 248, 238)
+            theme["accent"] = "#f3b334"
+            theme["second"] = "#e24358"
+            theme["tone"] = "dark"
     return theme
 
 
 # ============================================================ vibe: Gemini + fallback
-PROMPT = """You are an Instagram carousel art director. Look at these {n} photos, in order.
-Describe only mood, colours, light and setting. Never identify or describe any person.
-What the carousel is about / user hint: {hint}
-Requested family: {family}
+PROMPT = """Analyze these {n} photos for an aesthetic Instagram scrapbook carousel.
+Story / User Hint: {hint}
+If the hint or photos suggest Indian festivities, Navratri, Garba, Dandiya, or Desi aesthetics, generate festive desi captions (e.g., "chogada on repeat", "lehenga twirls", "nine nights of magic", "post-garba chai", "feeling desi").
+Otherwise generate warm, aesthetic scrapbook polaroid captions and notes.
 
-Carousel families:
-- "classic": photo-dump collages (polaroid / minimal / film / poster frames).
-- "whimsy": full-bleed photos, ONE big bold lowercase word per slide, a friendly sentence under it, yellow stars,
-  small inset photos with labels. Great for tips, hobbies, "5 ways to..." lists.
-- "scribble": poster look with hand-scribbled headline, handwritten notes and arrows. Great for events, announcements, personal posts.
-If the requested family is "auto", choose the best one. Otherwise use the requested family.
-
-Reply with ONLY a JSON object:
-"vibe_name": 2-4 words
-"mood_word": one word, 6+ letters if possible
-"tone": "light" or "dark"
-"family": one of {families}
-"style": one of {styles} (used by the classic family)
-"font": one of ["serif","hand","sans","mono"] (used by the classic family)
-"elements": 2-4 of {elements} (used by the classic family)
-"slides": exactly {n} objects, one per photo in order, each with:
-    "title": whimsy = one lowercase word; classic = 1-4 lowercase words; scribble = 1-3 words
-    "subtitle": a friendly sentence, 12 words max, no emojis
-    "label": 1-2 word label for a small inset photo
-    "label2": another 1-2 word label
-"cover": {{"line1": short word ending in "-" if it is split, "line2": rest of the word, "kicker": 2-4 words, "sub1": 3-6 words, "sub2": 3-6 words}}
-"poster": {{"headline": 2-3 words, "kicker": 3-5 words, "location": 2-5 words, "datetime": "date\\ntime" placeholder if unknown, "notes": [4 very short handwritten notes]}}
-"post_caption": one short line
-"hashtags": up to 5 words, no # symbol
-Do NOT invent real dates, addresses, names or prices. If the hint does not give them, use obvious placeholders like "your date here"."""
+Return ONLY this JSON object:
+{{
+  "vibe_name": "2-4 words title",
+  "mood_word": "one word",
+  "tone": "light or dark",
+  "slides": [
+    {{"title": "1-4 words polaroid caption", "subtitle": "6-12 words note", "label": "1-2 words"}}
+  ],
+  "cover": {{"line1": "short word", "line2": "second word", "kicker": "2-4 words", "sub1": "3-6 words", "sub2": "3-6 words"}},
+  "poster": {{"headline": "headline", "kicker": "kicker", "location": "location", "datetime": "datetime", "notes": ["note 1", "note 2", "note 3", "note 4"]}},
+  "post_caption": "Instagram caption with emojis",
+  "hashtags": ["tag1", "tag2", "tag3"]
+}}"""
 
 WORDS = ["moment", "daydream", "sunny", "cosy", "wander", "golden", "gentle", "bloom"]
 CAPS = {"light": ["soft days", "good light", "just vibes", "memory lane", "golden hour", "no filter", "slow mornings", "little joys"],
@@ -183,82 +182,130 @@ CAPS = {"light": ["soft days", "good light", "just vibes", "memory lane", "golde
 SUBS = ["Add your own words here", "Tell the story of this photo", "Something you love about this", "Make it yours"]
 LABELS = ["idea", "mood", "tip", "fun", "calm", "cozy", "snack", "joy"]
 
+NAVRATRI_CAPS = [
+    "chogada on repeat",
+    "lehenga twirls",
+    "garba nights",
+    "dandiya beats",
+    "feeling desi",
+    "nine nights",
+    "post-garba chai",
+    "ghoomar mood"
+]
+NAVRATRI_SUBS = [
+    "garba nights and glowing festive lights ✨",
+    "nine nights of sheer joy & jhumka swish 💃",
+    "dandiya beats echoing in our hearts till 3 am 🪘",
+    "post-garba discussions and sore happy feet ☕",
+    "dressed up in nine yards of festive grace 🌸",
+    "twirling into the golden festive hour 💫",
+    "colors, beats and endless smiles 🌺",
+    "little moments of magic under the stars 🌙"
+]
 
-def heuristic_vibe(images, n, family="auto", hint=""):
+
+def heuristic_vibe(images, n, family="scrapbook", hint=""):
+    is_nav = any(w in hint.lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
     colors = extract_palette(images)
     av = sum(max(c) for c in colors) / len(colors) / 255
     sa = sum(sat(c) for c in colors) / len(colors)
-    if av < 0.40:
-        v = dict(vibe_name="Moody Film", mood_word="nocturne", tone="dark", style="film", font="mono", elements=["film_border", "stars", "dots"])
+    if is_nav:
+        v = dict(vibe_name="Navratri Garba Nights", mood_word="festive", tone="dark", style="pichwai", font="hand", elements=["tape", "stars", "squiggle"])
+    elif av < 0.40:
+        v = dict(vibe_name="Moody Film", mood_word="nocturne", tone="dark", style="polaroid", font="mono", elements=["tape", "stars", "dots"])
     elif sa > 0.55:
-        v = dict(vibe_name="Bold Pop", mood_word="electric", tone="light", style="poster", font="sans", elements=["stars", "circles", "squiggle"])
-    elif sa < 0.22:
-        v = dict(vibe_name="Clean Minimal", mood_word="minimal", tone="light", style="minimal", font="serif", elements=["circles", "dots"])
+        v = dict(vibe_name="Bold Pop", mood_word="electric", tone="light", style="polaroid", font="sans", elements=["stars", "circles", "squiggle"])
     else:
-        v = dict(vibe_name="Soft Dream", mood_word="daydream", tone="light", style="polaroid", font="hand", elements=["tape", "stars", "squiggle"])
-    v["family"] = family if family in FAMILIES else "whimsy"
+        v = dict(vibe_name="Soft Scrapbook", mood_word="daydream", tone="light", style="polaroid", font="hand", elements=["tape", "stars", "squiggle"])
+    v["family"] = "scrapbook"
     return clean_vibe(v, n, hint)
 
 
 def clean_vibe(raw, n, hint=""):
-    tone = raw.get("tone") if raw.get("tone") in ("light", "dark") else "light"
+    is_nav = any(w in hint.lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
+    tone = raw.get("tone") if raw.get("tone") in ("light", "dark") else ("dark" if is_nav else "light")
     raw_slides = [s for s in (raw.get("slides") or []) if isinstance(s, dict)]
-    legacy = [str(c).strip() for c in (raw.get("captions") or [])]
     slides = []
     for i in range(n):
         s = raw_slides[i] if i < len(raw_slides) else {}
-        title = str(s.get("title") or (legacy[i] if i < len(legacy) else "") or "").strip()
-        slides.append({"title": (title or CAPS[tone][i % 8])[:30],
-                       "subtitle": str(s.get("subtitle") or SUBS[i % 4])[:90],
-                       "label": str(s.get("label") or LABELS[i % 8])[:16],
-                       "label2": str(s.get("label2") or LABELS[(i + 3) % 8])[:16]})
+        fallback_title = NAVRATRI_CAPS[i % len(NAVRATRI_CAPS)] if is_nav else CAPS[tone][i % 8]
+        fallback_sub = NAVRATRI_SUBS[i % len(NAVRATRI_SUBS)] if is_nav else SUBS[i % 4]
+        title = str(s.get("title") or fallback_title).strip()
+        slides.append({
+            "title": title[:30],
+            "subtitle": str(s.get("subtitle") or fallback_sub)[:90],
+            "label": str(s.get("label") or ("moment" if is_nav else LABELS[i % 8]))[:16],
+            "label2": str(s.get("label2") or LABELS[(i + 3) % 8])[:16]
+        })
     c, p = raw.get("cover") or {}, raw.get("poster") or {}
     notes = [str(x)[:24] for x in (p.get("notes") or []) if str(x).strip()]
-    notes = (notes + ["your note", "add a detail", "something fun", "see you there"])[:4]
-    word = str(raw.get("mood_word") or "memories").strip().split()[0][:16]
+    if is_nav and not notes:
+        notes = ["garba beats", "jhumka swish", "midnight chai", "twirl mode"]
+    else:
+        notes = (notes + ["your note", "add a detail", "something fun", "see you there"])[:4]
+    word = str(raw.get("mood_word") or ("festive" if is_nav else "memories")).strip().split()[0][:16]
+    default_name = "Navratri Garba Nights" if is_nav else "Aesthetic Scrapbook"
     return {
-        "vibe_name": str(raw.get("vibe_name") or "Aesthetic Mood")[:40], "mood_word": word, "tone": tone,
-        "family": raw.get("family") if raw.get("family") in FAMILIES else "whimsy",
-        "style": raw.get("style") if raw.get("style") in STYLES else "polaroid",
-        "font": raw.get("font") if raw.get("font") in ("serif", "hand", "sans", "mono") else "serif",
-        "elements": [e for e in (raw.get("elements") or []) if e in ELEMENTS][:4] or ["tape", "stars", "squiggle"],
+        "vibe_name": str(raw.get("vibe_name") or default_name)[:40],
+        "mood_word": word,
+        "tone": tone,
+        "family": "scrapbook",
+        "style": "pichwai" if is_nav else "polaroid",
+        "font": "hand",
+        "elements": ["tape", "stars", "squiggle"],
         "slides": slides,
-        "cover": {"line1": str(c.get("line1") or word[:max(3, len(word) // 2)] + "-")[:14],
-                  "line2": str(c.get("line2") or word[max(3, len(word) // 2):] or "mood")[:14],
-                  "kicker": str(c.get("kicker") or f"{n} ways to add")[:30], "sub1": str(c.get("sub1") or "into your everyday life")[:40],
-                  "sub2": str(c.get("sub2") or "Choose your favourite...")[:40]},
-        "poster": {"headline": str(p.get("headline") or hint[:24] or "your headline")[:30], "kicker": str(p.get("kicker") or "add your tagline")[:36],
-                   "location": str(p.get("location") or "your place here")[:40], "datetime": str(p.get("datetime") or "your date\nyour time")[:40],
-                   "notes": notes},
-        "post_caption": str(raw.get("post_caption") or "").strip(),
-        "hashtags": [str(h).lstrip("#").strip() for h in (raw.get("hashtags") or []) if str(h).strip()][:5],
+        "cover": {
+            "line1": str(c.get("line1") or ("NAVRATRI-" if is_nav else word[:max(3, len(word) // 2)] + "-"))[:14],
+            "line2": str(c.get("line2") or ("DUMP" if is_nav else "MOOD"))[:14],
+            "kicker": str(c.get("kicker") or (f"{n} festive nights" if is_nav else f"{n} memories"))[:30],
+            "sub1": str(c.get("sub1") or ("garba beats & glowing lights" if is_nav else "flip through the story"))[:40],
+            "sub2": str(c.get("sub2") or "swipe to twirl")[:40]
+        },
+        "poster": {
+            "headline": str(p.get("headline") or (hint[:24] if hint else "NAVRATRI 2024"))[:30],
+            "kicker": str(p.get("kicker") or "garba nights & glowing lights")[:36],
+            "location": str(p.get("location") or "garba ground")[:40],
+            "datetime": str(p.get("datetime") or "nine nights")[:40],
+            "notes": notes
+        },
+        "post_caption": str(raw.get("post_caption") or ("nine nights of pure magic, garba beats & lehenga twirls ✨💃🪘" if is_nav else "")).strip(),
+        "hashtags": [str(h).lstrip("#").strip() for h in (raw.get("hashtags") or (["navratri", "garbanights", "feelingdesi", "chogada", "festivevibes"] if is_nav else [])) if str(h).strip()][:5],
     }
 
 
-def analyze_with_gemini(images, hint="", family="auto", api_key=None, model=None):
+def analyze_with_gemini(images, hint="", family="scrapbook", api_key=None, model=None):
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key:
         raise RuntimeError("no Gemini key (set GEMINI_API_KEY in .env)")
     candidate_models = [model or os.environ.get("GEMINI_MODEL", DEFAULT_MODEL), "gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash"]
-    # Deduplicate while preserving order
     seen = set()
     models = [m for m in candidate_models if m and not (m in seen or seen.add(m))]
     
-    parts = [{"text": PROMPT.format(n=len(images), hint=hint or "none", family=family, families=FAMILIES, styles=STYLES, elements=ELEMENTS)}]
+    parts = [{"text": PROMPT.format(n=len(images), hint=hint or "none")}]
     for im in images:
         small = im.convert("RGB")
-        small.thumbnail((768, 768))
+        # 384x384 downsampling reduces vision token usage by 75% and uploads 10x faster!
+        small.thumbnail((384, 384))
         buf = io.BytesIO()
-        small.save(buf, "JPEG", quality=80)
+        small.save(buf, "JPEG", quality=65)
         parts.append({"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(buf.getvalue()).decode()}})
 
     last_err = None
     for m in models:
         try:
-            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent",
-                              headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-                              json={"contents": [{"parts": parts}], "generationConfig": {"responseMimeType": "application/json", "temperature": 0.8}},
-                              timeout=90)
+            r = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent",
+                headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                json={
+                    "contents": [{"parts": parts}],
+                    "generationConfig": {
+                        "responseMimeType": "application/json",
+                        "temperature": 0.7,
+                        "maxOutputTokens": 600
+                    }
+                },
+                timeout=45
+            )
             if r.ok:
                 txt = r.json()["candidates"][0]["content"]["parts"][0]["text"]
                 return json.loads(txt)
@@ -545,7 +592,7 @@ def cover_crop(img, W, H, fx=0.5, fy=0.5, zoom=1.0):
     return img.resize((W, H), Image.LANCZOS, box=(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2))
 
 
-FRAME_DIMS = {"polaroid": (660, 920, 0), "film": (640, 892, 100), "poster": (668, 848, 150), "minimal": (680, 880, 120)}
+FRAME_DIMS = {"polaroid": (660, 920, 0), "film": (640, 892, 100), "poster": (668, 848, 150), "minimal": (680, 880, 120), "pichwai": (652, 820, 0)}
 
 
 def make_frame(photo, style, theme, caption, font_kind):
@@ -568,6 +615,28 @@ def make_frame(photo, style, theme, caption, font_kind):
                 d.rounded_rectangle([x, y, x + 26, y + 20], 5, fill=(235, 230, 220, 255))
         body.putalpha(rounded_mask(body.size, 8))
         cap = caption_layer(caption, body.width, "mono", 32, t["text"], height=100, upper=True)
+    elif style == "pichwai":
+        pw, ph, side, top, bottom = 580, 740, 36, 36, 44
+        crimson = (88, 11, 20, 255)
+        gold = (214, 175, 65, 255)
+        ivory = (255, 243, 218, 240)
+        body = Image.new("RGBA", (pw + 2 * side, ph + top + bottom), crimson)
+        d = ImageDraw.Draw(body)
+        d.rectangle([4, 4, body.width - 5, body.height - 5], outline=gold, width=3)
+        d.rectangle([12, 12, body.width - 13, body.height - 13], outline=ivory, width=2)
+        for cx, cy in [(22, 22), (body.width - 23, 22), (22, body.height - 23), (body.width - 23, body.height - 23)]:
+            d.ellipse([cx - 7, cy - 7, cx + 7, cy + 7], fill=gold)
+            d.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], fill=(226, 67, 88, 255))
+        for x in range(36, body.width - 40, 28):
+            d.line([(x, 8), (x + 14, 8)], fill=ivory, width=1)
+            d.line([(x, body.height - 9), (x + 14, body.height - 9)], fill=ivory, width=1)
+        for y in range(36, body.height - 40, 28):
+            d.line([(8, y), (8, y + 14)], fill=ivory, width=1)
+            d.line([(body.width - 9, y), (body.width - 9, y + 14)], fill=ivory, width=1)
+        body.paste(fit_photo(photo, (pw, ph)), (side, top))
+        d.rectangle([side - 2, top - 2, side + pw + 1, top + ph + 1], outline=gold, width=2)
+        body.putalpha(rounded_mask(body.size, 10))
+        cap = None
     elif style == "poster":
         pw, ph, off = 640, 820, 28
         body = Image.new("RGBA", (pw + off, ph + off), (0, 0, 0, 0))
@@ -606,6 +675,250 @@ def make_inset(photo, w, label, label_color, theme):
     canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(8)))
     composite(canvas, body, (canvas.width - body.width) // 2, pad)
     composite(canvas, cap, 0, pad + body.height - 4)
+    return canvas
+
+
+def draw_lotus_shape(d, s, cx, cy, w, h):
+    pink_dark = (195, 35, 75, 255)
+    pink_mid = (235, 75, 115, 255)
+    pink_light = (255, 160, 190, 255)
+    green = (55, 120, 65, 255)
+    gold = (245, 195, 60, 255)
+
+    # Base leaves
+    d.polygon([(cx, cy + h * 0.35), (cx - w * 0.45, cy + h * 0.25), (cx - w * 0.2, cy + h * 0.45)], fill=green)
+    d.polygon([(cx, cy + h * 0.35), (cx + w * 0.45, cy + h * 0.25), (cx + w * 0.2, cy + h * 0.45)], fill=green)
+    d.line([(cx, cy + h * 0.35), (cx, cy + h * 0.48)], fill=green, width=int(2 * s))
+
+    # Outer back petals
+    d.polygon([(cx, cy + h * 0.2), (cx - w * 0.45, cy - h * 0.15), (cx - w * 0.35, cy - h * 0.35), (cx - w * 0.1, cy - h * 0.1)], fill=pink_dark)
+    d.polygon([(cx, cy + h * 0.2), (cx + w * 0.45, cy - h * 0.15), (cx + w * 0.35, cy - h * 0.35), (cx + w * 0.1, cy - h * 0.1)], fill=pink_dark)
+
+    # Middle petals
+    d.polygon([(cx, cy + h * 0.25), (cx - w * 0.35, cy), (cx - w * 0.25, cy - h * 0.4), (cx, cy - h * 0.1)], fill=pink_mid)
+    d.polygon([(cx, cy + h * 0.25), (cx + w * 0.35, cy), (cx + w * 0.25, cy - h * 0.4), (cx, cy - h * 0.1)], fill=pink_mid)
+
+    # Center main petal
+    d.polygon([(cx, cy + h * 0.25), (cx - w * 0.18, cy - h * 0.1), (cx, cy - h * 0.48), (cx + w * 0.18, cy - h * 0.1)], fill=pink_mid)
+    d.polygon([(cx, cy + h * 0.2), (cx - w * 0.1, cy - h * 0.05), (cx, cy - h * 0.38), (cx + w * 0.1, cy - h * 0.05)], fill=pink_light)
+    d.ellipse([(cx - w * 0.15, cy + h * 0.15), (cx + w * 0.15, cy + h * 0.32)], fill=gold)
+
+
+def draw_jhumka_shape(d, s, cx, cy, sz):
+    gold = (225, 175, 55, 255)
+    gold_dark = (175, 125, 30, 255)
+    ruby = (215, 35, 60, 255)
+    pearl = (255, 245, 230, 255)
+
+    r_stud = sz * 0.22
+    y_stud = cy - sz * 0.38
+    d.ellipse([(cx - r_stud, y_stud - r_stud), (cx + r_stud, y_stud + r_stud)], fill=gold)
+    d.ellipse([(cx - r_stud * 0.55, y_stud - r_stud * 0.55), (cx + r_stud * 0.55, y_stud + r_stud * 0.55)], fill=ruby)
+
+    y_bell = cy + sz * 0.05
+    w_bell = sz * 0.75
+    h_bell = sz * 0.45
+    pts = [(cx - w_bell * 0.5, y_bell + h_bell), (cx - w_bell * 0.45, y_bell), (cx, y_bell - h_bell * 0.4),
+           (cx + w_bell * 0.45, y_bell), (cx + w_bell * 0.5, y_bell + h_bell)]
+    d.polygon(pts, fill=gold)
+    d.line(pts, fill=gold_dark, width=int(2 * s))
+    d.line([(cx - w_bell * 0.5, y_bell + h_bell), (cx + w_bell * 0.5, y_bell + h_bell)], fill=ruby, width=int(3 * s))
+
+    n_pearls = 7
+    for k in range(n_pearls):
+        px = cx - w_bell * 0.42 + (w_bell * 0.84 / (n_pearls - 1)) * k
+        py = y_bell + h_bell + sz * 0.15
+        d.line([(px, y_bell + h_bell), (px, py)], fill=gold, width=int(2 * s))
+        d.ellipse([(px - sz * 0.05, py - sz * 0.05), (px + sz * 0.05, py + sz * 0.05)], fill=pearl)
+
+
+def draw_chai_shape(d, s, cx, cy, sz):
+    glass_col = (255, 255, 255, 160)
+    chai_col = (195, 115, 50, 245)
+    chai_milk = (235, 175, 120, 245)
+
+    w_top = sz * 0.5
+    w_bot = sz * 0.35
+    h_glass = sz * 0.75
+    y_top = cy - h_glass * 0.4
+    y_bot = cy + h_glass * 0.5
+
+    glass_pts = [(cx - w_top / 2, y_top), (cx + w_top / 2, y_top), (cx + w_bot / 2, y_bot), (cx - w_bot / 2, y_bot)]
+    d.polygon(glass_pts, fill=(240, 240, 240, 70))
+
+    y_chai = y_top + h_glass * 0.18
+    w_chai = w_top - (w_top - w_bot) * 0.18
+    chai_pts = [(cx - w_chai / 2, y_chai), (cx + w_chai / 2, y_chai), (cx + w_bot / 2 - 2 * s, y_bot - 4 * s), (cx - w_bot / 2 + 2 * s, y_bot - 4 * s)]
+    d.polygon(chai_pts, fill=chai_col)
+    d.ellipse([(cx - w_chai / 2, y_chai - 5 * s), (cx + w_chai / 2, y_chai + 5 * s)], fill=chai_milk)
+
+    for fx in [-0.2, 0, 0.2]:
+        d.line([(cx + w_top * fx, y_top + 4 * s), (cx + w_bot * fx, y_bot - 4 * s)], fill=glass_col, width=int(2 * s))
+
+    d.arc([(cx - 15 * s, y_top - 25 * s), (cx + 5 * s, y_top - 5 * s)], 180, 360, fill=(255, 255, 255, 180), width=int(2 * s))
+    d.arc([(cx - 5 * s, y_top - 38 * s), (cx + 15 * s, y_top - 18 * s)], 0, 180, fill=(255, 255, 255, 180), width=int(2 * s))
+
+
+def draw_mojri_shape(d, s, cx, cy, sz):
+    maroon = (130, 20, 35, 255)
+    gold = (230, 185, 65, 255)
+
+    for ox, oy, rot in [(-sz * 0.15, -sz * 0.1, -25), (sz * 0.12, sz * 0.1, 15)]:
+        rad = math.radians(rot)
+        cos_r, sin_r = math.cos(rad), math.sin(rad)
+        pts = [
+            (-sz * 0.35, -sz * 0.12), (sz * 0.35, -sz * 0.18), (sz * 0.48, 0),
+            (sz * 0.35, sz * 0.18), (-sz * 0.35, sz * 0.12), (-sz * 0.42, 0)
+        ]
+        tf_pts = [(cx + ox + (px * cos_r - py * sin_r), cy + oy + (px * sin_r + py * cos_r)) for px, py in pts]
+        d.polygon(tf_pts, fill=maroon)
+        d.line(tf_pts + [tf_pts[0]], fill=gold, width=int(2 * s))
+        d.line([(cx + ox - 5 * s, cy + oy), (cx + ox + 5 * s, cy + oy)], fill=gold, width=int(2 * s))
+
+
+def draw_rickshaw_shape(d, s, cx, cy, sz):
+    yellow = (245, 195, 45, 255)
+    green = (35, 135, 80, 255)
+    black = (30, 30, 35, 255)
+    glass = (220, 240, 250, 220)
+
+    w, h = sz * 0.85, sz * 0.75
+    hood = [(cx - w * 0.45, cy - h * 0.2), (cx - w * 0.3, cy - h * 0.5), (cx + w * 0.35, cy - h * 0.5), (cx + w * 0.45, cy - h * 0.2)]
+    d.polygon(hood, fill=yellow)
+
+    wind = [(cx - w * 0.42, cy - h * 0.2), (cx + w * 0.42, cy - h * 0.2), (cx + w * 0.38, cy + h * 0.05), (cx - w * 0.38, cy + h * 0.05)]
+    d.polygon(wind, fill=glass)
+
+    body = [(cx - w * 0.45, cy + h * 0.05), (cx + w * 0.45, cy + h * 0.05), (cx + w * 0.4, cy + h * 0.35), (cx - w * 0.4, cy + h * 0.35)]
+    d.polygon(body, fill=green)
+    d.ellipse([(cx - w * 0.1, cy + h * 0.12), (cx + w * 0.1, cy + h * 0.32)], fill=yellow)
+    d.ellipse([(cx - w * 0.42, cy + h * 0.25), (cx - w * 0.2, cy + h * 0.52)], fill=black)
+    d.ellipse([(cx + w * 0.2, cy + h * 0.25), (cx + w * 0.42, cy + h * 0.52)], fill=black)
+
+
+def draw_dandiya_shape(d, s, cx, cy, sz):
+    gold = (235, 185, 60, 255)
+    red = (215, 45, 65, 255)
+    blue = (40, 130, 210, 255)
+
+    for da in [-35, 35]:
+        rad = math.radians(da)
+        c, sn = math.cos(rad), math.sin(rad)
+        p1 = (cx - sz * 0.45 * c, cy - sz * 0.45 * sn)
+        p2 = (cx + sz * 0.45 * c, cy + sz * 0.45 * sn)
+        d.line([p1, p2], fill=gold, width=int(8 * s))
+        d.line([(cx - sz * 0.15 * c, cy - sz * 0.15 * sn), (cx + sz * 0.15 * c, cy + sz * 0.15 * sn)], fill=red, width=int(8 * s))
+        d.line([(cx - sz * 0.05 * c, cy - sz * 0.05 * sn), (cx + sz * 0.05 * c, cy + sz * 0.05 * sn)], fill=blue, width=int(8 * s))
+
+
+def draw_diya_shape(d, s, cx, cy, sz):
+    clay = (185, 75, 45, 255)
+    gold = (245, 195, 60, 255)
+    flame_orange = (255, 140, 25, 255)
+    flame_yellow = (255, 235, 80, 255)
+
+    d.chord([(cx - sz * 0.4, cy - sz * 0.1), (cx + sz * 0.4, cy + sz * 0.4)], 0, 180, fill=clay)
+    d.ellipse([(cx - sz * 0.35, cy - sz * 0.12), (cx + sz * 0.35, cy + sz * 0.08)], fill=gold)
+
+    flame_pts = [(cx, cy - sz * 0.45), (cx + sz * 0.16, cy - sz * 0.12), (cx, cy), (cx - sz * 0.16, cy - sz * 0.12)]
+    d.polygon(flame_pts, fill=flame_orange)
+    flame_core = [(cx, cy - sz * 0.38), (cx + sz * 0.09, cy - sz * 0.12), (cx, cy - sz * 0.02), (cx - sz * 0.09, cy - sz * 0.12)]
+    d.polygon(flame_core, fill=flame_yellow)
+
+
+def make_music_player(title="Tere Chehre Se Nazar Nahin", artist="Lata Mangeshkar, Kishore Kumar", current="2:57", total="5:02", width=460, height=130):
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    card = Image.new("RGBA", (width, height), (24, 12, 14, 238))
+    mask = rounded_mask((width, height), 16)
+    card.putalpha(mask)
+    canvas = Image.alpha_composite(canvas, card)
+    d = ImageDraw.Draw(canvas)
+    
+    t_font = get_font("sans_bold", 20)
+    a_font = get_font("sans", 15)
+    d.text((20, 18), title[:30], font=t_font, fill=(255, 255, 255, 245))
+    d.text((20, 46), artist[:34], font=a_font, fill=(210, 195, 195, 200))
+    
+    # Clean vector heart icon
+    hx, hy = width - 32, 26
+    d.arc([(hx - 10, hy - 8), (hx, hy + 2)], 180, 0, fill=(240, 220, 220, 220), width=2)
+    d.arc([(hx, hy - 8), (hx + 10, hy + 2)], 180, 0, fill=(240, 220, 220, 220), width=2)
+    d.line([(hx - 10, hy - 3), (hx, hy + 8)], fill=(240, 220, 220, 220), width=2)
+    d.line([(hx + 10, hy - 3), (hx, hy + 8)], fill=(240, 220, 220, 220), width=2)
+    
+    bar_y = 80
+    d.line([(20, bar_y), (width - 20, bar_y)], fill=(120, 80, 85, 180), width=4)
+    prog_x = int(20 + (width - 40) * 0.58)
+    d.line([(20, bar_y), (prog_x, bar_y)], fill=(255, 255, 255, 240), width=4)
+    d.ellipse([(prog_x - 5, bar_y - 5), (prog_x + 5, bar_y + 5)], fill=(255, 255, 255, 255))
+    
+    s_font = get_font("mono", 12)
+    d.text((20, 96), current, font=s_font, fill=(190, 175, 175, 190))
+    d.text((width - 20, 96), total, font=s_font, fill=(190, 175, 175, 190), anchor="ra")
+    
+    cx, cy = width // 2, 102
+    d.ellipse([(cx - 15, cy - 15), (cx + 15, cy + 15)], fill=(255, 255, 255, 250))
+    d.polygon([(cx - 4, cy - 6), (cx - 4, cy + 6), (cx + 5, cy)], fill=(20, 10, 12, 255))
+    d.polygon([(cx - 38, cy - 5), (cx - 38, cy + 5), (cx - 44, cy)], fill=(230, 220, 220, 230))
+    d.polygon([(cx + 38, cy - 5), (cx + 38, cy + 5), (cx + 44, cy)], fill=(230, 220, 220, 230))
+    return canvas
+
+
+def make_feeling_desi_badge(width=280, height=130):
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    card = Image.new("RGBA", (width - 16, height - 16), (248, 240, 226, 255))
+    d_card = ImageDraw.Draw(card)
+    d_card.rectangle([3, 3, card.width - 4, card.height - 4], outline=(160, 120, 100, 120), width=1)
+    
+    # Vector lotus above script
+    draw_lotus_shape(d_card, 1, card.width // 2, 22, 28, 26)
+    
+    d_card.text((card.width // 2, 56), "Feeling", font=get_font("hand", 36), fill=(70, 15, 20, 255), anchor="mm")
+    d_card.text((card.width // 2, 90), "DESI", font=get_font("sans_bold", 28), fill=(180, 20, 30, 255), anchor="mm")
+    card.putalpha(rounded_mask(card.size, 8))
+    
+    pad = 8
+    canvas.paste(card, (pad, pad))
+    sh = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    sh.paste(card.getchannel("A").point(lambda v: int(v * 0.25)), (pad + 1, pad + 3))
+    return Image.alpha_composite(sh.filter(ImageFilter.GaussianBlur(6)), canvas)
+
+
+def make_desi_sticker(kind="lotus", size=130):
+    def fn(d, s):
+        cx, cy = (size * s) / 2, (size * s) / 2
+        sz = size * s * 0.85
+        if kind == "lotus":
+            draw_lotus_shape(d, s, cx, cy, sz * 0.55, sz * 0.55)
+        elif kind == "jhumka":
+            draw_jhumka_shape(d, s, cx, cy, sz)
+        elif kind == "mojri":
+            draw_mojri_shape(d, s, cx, cy, sz)
+        elif kind in ("mehndi_chai", "chai"):
+            draw_chai_shape(d, s, cx, cy, sz)
+        elif kind == "rickshaw":
+            draw_rickshaw_shape(d, s, cx, cy, sz)
+        elif kind == "dandiya":
+            draw_dandiya_shape(d, s, cx, cy, sz)
+        elif kind == "diya":
+            draw_diya_shape(d, s, cx, cy, sz)
+        else:
+            draw_lotus_shape(d, s, cx, cy, sz * 0.55, sz * 0.55)
+
+    return aa_layer(size, size, fn)
+
+
+def make_lotus_border(width, height=74):
+    canvas = Image.new("RGBA", (width, height), (198, 152, 48, 255))
+    d = ImageDraw.Draw(canvas)
+    step = 64
+    for x in range(0, width, step):
+        d.rectangle([x, 0, x + step - 2, height], outline=(150, 110, 30, 255), width=1)
+        cx = x + step // 2
+        cy = height // 2
+        draw_lotus_shape(d, 1, cx, cy, 32, 30)
+    d.line([(0, 0), (width, 0)], fill=(255, 240, 200, 240), width=2)
+    d.line([(0, height - 1), (width, height - 1)], fill=(255, 240, 200, 240), width=2)
     return canvas
 
 
@@ -707,6 +1020,25 @@ def draw_element(canvas, el, ox, W, H, theme, images, seed):
     elif t == "torn":
         h = int(el.get("h", 300))
         composite(canvas, torn_layer(W, h, col, int(el.get("jag", 14)), rng), ox, Y - 50)
+    elif t == "music_player":
+        player = make_music_player(
+            title=str(el.get("title", "Chogada - Loveyatri")),
+            artist=str(el.get("artist", "Darshan Raval, Asees Kaur")),
+            current=str(el.get("current", "2:57")),
+            total=str(el.get("total", "5:02")),
+            width=int(el.get("w", 480)),
+            height=int(el.get("h", 136))
+        )
+        put(canvas, player, X, Y, rot)
+    elif t == "desi_badge":
+        badge = make_feeling_desi_badge(int(el.get("w", 280)), int(el.get("h", 130)))
+        put(canvas, badge, X, Y, rot)
+    elif t == "desi_sticker":
+        stk = make_desi_sticker(el.get("kind", "lotus"), int(el.get("size", 130)))
+        put(canvas, stk, X, Y, rot)
+    elif t == "lotus_border":
+        lb = make_lotus_border(W, int(el.get("h", 72)))
+        composite(canvas, lb, ox, int(Y))
 
 
 def overlays(img, i, n, spec, theme, on_photo):
@@ -715,8 +1047,9 @@ def overlays(img, i, n, spec, theme, on_photo):
     over = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(over)
     ink = (255, 255, 255) if on_photo else resolve_color("theme:text", theme)
-    low = 100 if spec.get("film") else 0
-    if g.get("counter", True):
+    is_nav = any(el.get("type") == "lotus_border" for s in spec.get("slides", []) for el in s.get("elements", []))
+    low = 100 if spec.get("film") else (55 if is_nav else 0)
+    if g.get("counter", True) and not (i == 0 and is_nav):
         d.text((W - 64, 62 + low), f"{i + 1:02d} / {n:02d}", font=get_font("mono", 30), fill=(*ink, 200), anchor="ra")
     if i == 0 and g.get("swipe", True):
         ax, ay = W - 64, H - 90 - low
@@ -968,18 +1301,39 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     rng = random.Random(seed)
     cont = mode == "continuous"
     
-    # Curated Scrapbook Palette
-    theme = make_theme(extract_palette(images), vibe.get("tone", "light"), "Warm Cream & Espresso")
-    theme.update({
-        "title": "#2c2523",
-        "star": "#d49b45",
-        "hl": "#d9b48f",
-        "note": "#4a4039",
-        "band": "#ede6d8",
-        "tape": "#e8d3b9",
-        "bg1": "#f8f5ee",
-        "bg2": "#f0ebe1"
-    })
+    is_nav = any(w in str(vibe).lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "pichwai", "festive"]) or vibe.get("style") == "pichwai"
+    
+    if is_nav:
+        theme = {
+            "title": "#ffffff",
+            "star": "#f3b334",
+            "hl": "#e24358",
+            "note": "#fedec6",
+            "band": "#38060c",
+            "tape": "#d49b45",
+            "bg1": "#580b14",
+            "bg2": "#3e050b",
+            "paper": (255, 248, 238),
+            "accent": "#f3b334",
+            "second": "#e24358",
+            "text": "#fff1d6",
+            "tone": "dark",
+            "title_font": "hand",
+            "body_font": "hand"
+        }
+    else:
+        # Curated Scrapbook Palette
+        theme = make_theme(extract_palette(images), vibe.get("tone", "light"), "Warm Cream & Espresso")
+        theme.update({
+            "title": "#2c2523",
+            "star": "#d49b45",
+            "hl": "#d9b48f",
+            "note": "#4a4039",
+            "band": "#ede6d8",
+            "tape": "#e8d3b9",
+            "bg1": "#f8f5ee",
+            "bg2": "#f0ebe1"
+        })
     
     total_slides = (n + 1) if (cover and not cont) else n
     spec = new_spec(size, mode, theme, grain=True, family="scrapbook", n=total_slides)
@@ -989,44 +1343,70 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     slide_offset = 0
     if cover and not cont:
         slide_offset = 1
-        headline = vibe.get("poster", {}).get("headline") or vibe.get("vibe_name") or "SCRAPBOOK MEMORIES"
-        kicker = vibe.get("poster", {}).get("kicker") or f"{n} visual moments"
-        sub = vibe.get("cover", {}).get("sub1") or "flip through the story"
-        
-        words = headline.split()
-        l1 = " ".join(words[:max(1, len(words)//2)])
-        l2 = " ".join(words[max(1, len(words)//2):]) if len(words) > 1 else ""
-        
-        s1 = fit_size(l1, "serif", 0.82 * W, 0, 70, 150)
-        
-        cov_els = [
-            E("torn", y=0.58, h=int(0.35 * H), color="theme:band", jag=16, z=0),
-            E("tape", w=240, h=60, x=0.25, y=0.08, rotate=-8, color="theme:tape", alpha=220, z=2),
-            E("tape", w=220, h=56, x=0.76, y=0.09, rotate=6, color="theme:tape", alpha=220, z=2),
-            E("frame", photo=0, style="polaroid", caption=vibe.get("slides", [{}])[0].get("title", "moment 01"),
-              font="hand", x=0.5, y=0.38, rotate=-2.5, z=1),
-            E("text", text=kicker.upper(), font="sans_bold", size=32, color="theme:star", tracking=4, x=0.5, y=0.62, shadow=False),
-            E("text", text=l1, font="serif", size=s1, color="theme:title", x=0.5, y=0.70, shadow=False),
-        ]
-        if l2:
-            s2 = fit_size(l2, "serif", 0.78 * W, 0, 60, 140)
-            cov_els.append(E("text", text=l2, font="serif", size=s2, color="theme:title", x=0.5, y=0.77, shadow=False))
-        
-        cov_els.extend([
-            E("text", text=sub, font="hand", size=54, color="theme:note", x=0.48, y=0.86, rotate=-1, shadow=False),
-            E("arrow", x=0.72, y=0.86, x2=0.86, y2=0.88, bend=35, width=6, color="theme:note", z=2),
-            E("text", text="swipe →", font="hand", size=44, color="theme:note", x=0.84, y=0.92, rotate=4, z=2),
-            E("star", shape="sparkle4", size=52, x=0.15, y=0.65, rotate=-12, color="theme:star", z=2),
-            E("star", shape="sparkle4", size=38, x=0.88, y=0.68, rotate=15, color="theme:star", z=2),
-        ])
-        sl[0].update(bg={"mode": "gradient", "bg1": "#f9f6ee", "bg2": "#efe9dc"}, elements=cov_els)
+        if is_nav:
+            # Recreate the stunning Navratri Desi reference layout!
+            cov_els = [
+                # Top & Bottom Pichwai Lotus Borders
+                E("lotus_border", h=74, x=0.5, y=0.026, z=1),
+                E("lotus_border", h=74, x=0.5, y=0.974, z=1),
+                # "Feeling Desi" torn parchment badge
+                E("desi_badge", w=260, h=120, x=0.82, y=0.10, rotate=3, z=2),
+                # Jhumka & Mojri stickers
+                E("desi_sticker", kind="jhumka", size=130, x=0.82, y=0.30, rotate=8, z=2),
+                E("desi_sticker", kind="mojri", size=140, x=0.74, y=0.46, rotate=-16, z=2),
+                # Pichwai Photo Frame 1 (top-left)
+                E("frame", photo=0, style="pichwai", caption="garba night", font="hand", x=0.31, y=0.35, rotate=-1, z=1),
+                # Instagram / Spotify Music Player card
+                E("music_player", title="Tere Chehre Se Nazar Nahin", artist="Lata Mangeshkar, Kishore Kumar", current="2:57", total="5:02", w=460, h=130, x=0.31, y=0.65, rotate=0, z=2),
+                # Bottom stickers: Mehndi Chai & Auto Rickshaw
+                E("desi_sticker", kind="mehndi_chai", size=130, x=0.33, y=0.82, rotate=4, z=2),
+                E("desi_sticker", kind="rickshaw", size=120, x=0.12, y=0.85, rotate=-4, z=2),
+                # Pichwai Photo Frame 2 (bottom-right)
+                E("frame", photo=(1 if n > 1 else 0), style="pichwai", caption="chogada vibe", font="hand", x=0.76, y=0.70, rotate=1, z=1),
+                # Golden sparkles
+                E("star", shape="sparkle4", size=48, x=0.56, y=0.16, rotate=12, color="theme:star", z=2),
+                E("star", shape="sparkle4", size=36, x=0.56, y=0.88, rotate=-8, color="theme:star", z=2),
+            ]
+            sl[0].update(bg={"mode": "gradient", "bg1": "#580b14", "bg2": "#3e050b"}, elements=cov_els)
+        else:
+            headline = vibe.get("poster", {}).get("headline") or vibe.get("vibe_name") or "SCRAPBOOK MEMORIES"
+            kicker = vibe.get("poster", {}).get("kicker") or f"{n} visual moments"
+            sub = vibe.get("cover", {}).get("sub1") or "flip through the story"
+            
+            words = headline.split()
+            l1 = " ".join(words[:max(1, len(words)//2)])
+            l2 = " ".join(words[max(1, len(words)//2):]) if len(words) > 1 else ""
+            
+            s1 = fit_size(l1, "serif", 0.82 * W, 0, 70, 150)
+            
+            cov_els = [
+                E("torn", y=0.58, h=int(0.35 * H), color="theme:band", jag=16, z=0),
+                E("tape", w=240, h=60, x=0.25, y=0.08, rotate=-8, color="theme:tape", alpha=220, z=2),
+                E("tape", w=220, h=56, x=0.76, y=0.09, rotate=6, color="theme:tape", alpha=220, z=2),
+                E("frame", photo=0, style="polaroid", caption=vibe.get("slides", [{}])[0].get("title", "moment 01"),
+                  font="hand", x=0.5, y=0.38, rotate=-2.5, z=1),
+                E("text", text=kicker.upper(), font="sans_bold", size=32, color="theme:star", tracking=4, x=0.5, y=0.62, shadow=False),
+                E("text", text=l1, font="serif", size=s1, color="theme:title", x=0.5, y=0.70, shadow=False),
+            ]
+            if l2:
+                s2 = fit_size(l2, "serif", 0.78 * W, 0, 60, 140)
+                cov_els.append(E("text", text=l2, font="serif", size=s2, color="theme:title", x=0.5, y=0.77, shadow=False))
+            
+            cov_els.extend([
+                E("text", text=sub, font="hand", size=54, color="theme:note", x=0.48, y=0.86, rotate=-1, shadow=False),
+                E("arrow", x=0.72, y=0.86, x2=0.86, y2=0.88, bend=35, width=6, color="theme:note", z=2),
+                E("text", text="swipe →", font="hand", size=44, color="theme:note", x=0.84, y=0.92, rotate=4, z=2),
+                E("star", shape="sparkle4", size=52, x=0.15, y=0.65, rotate=-12, color="theme:star", z=2),
+                E("star", shape="sparkle4", size=38, x=0.88, y=0.68, rotate=15, color="theme:star", z=2),
+            ])
+            sl[0].update(bg={"mode": "gradient", "bg1": "#f9f6ee", "bg2": "#efe9dc"}, elements=cov_els)
 
     # In continuous mode, add subtle panoramic backdrop text
     if cont:
-        mood_word = vibe.get("mood_word", "MEMORIES").upper()
+        mood_word = ("NAVRATRI" if is_nav else vibe.get("mood_word", "MEMORIES")).upper()
         # Ambient background text on slide 0 that subtly flows across the whole panorama
         sl[0]["elements"].append(
-            E("text", text=mood_word, font="serif_italic", size=180, color="theme:title",
+            E("text", text=mood_word, font="serif_italic" if not is_nav else "hand", size=180, color="theme:title",
               opacity=0.07, x=n * 0.45, y=0.20, shadow=False, z=0)
         )
 
@@ -1035,12 +1415,14 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         if target_idx >= len(sl):
             break
         v_slide = vibe.get("slides", [{}])[idx] if idx < len(vibe.get("slides", [])) else {}
-        title = v_slide.get("title") or f"moment {idx+1}"
-        subtitle = v_slide.get("subtitle") or "A special memory captured in time"
+        title = v_slide.get("title") or (NAVRATRI_CAPS[idx % len(NAVRATRI_CAPS)] if is_nav else f"moment {idx+1}")
+        subtitle = v_slide.get("subtitle") or (NAVRATRI_SUBS[idx % len(NAVRATRI_SUBS)] if is_nav else "A special memory captured in time")
         label = v_slide.get("label") or "detail"
         
+        frame_style = "pichwai" if is_nav else "polaroid"
+        
         if cont:
-            # Stagger polaroids dynamically across slides for an authentic scrapbook panorama
+            # Stagger frames dynamically across slides for an authentic scrapbook panorama
             if idx % 3 == 0:
                 cx, cy = 0.48, 0.44
                 rot = -2.8 + rng.uniform(-0.8, 0.8)
@@ -1055,31 +1437,61 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             cy = 0.44 + (0.02 if idx % 2 == 0 else -0.02)
             cx = 0.5
         
-        slide_els = [
-            E("torn", y=0.76, h=int(0.24 * H), color="theme:band", jag=14, z=0),
-            E("frame", photo=idx, style="polaroid", caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
-            E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
-              color="theme:tape", alpha=230, z=2),
-            E("text", text=subtitle, font="hand", size=54, color="theme:note", max_w=0.80, x=cx, y=0.86,
-              rotate=round(rng.uniform(-2, 2), 1), shadow=False, line_gap=1.05),
-            E("star", shape="sparkle4", size=rng.randint(42, 68), x=0.14 if idx % 2 == 0 else 0.86,
-              y=0.18 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
-            E("star", shape="sparkle4", size=rng.randint(28, 44), x=0.88 if idx % 2 == 0 else 0.12,
-              y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
-        ]
-        
-        if not cont:
-            if n > 1 and idx % 2 == 1:
-                inset_ph = (idx + 1) % n
-                slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
-                slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
-            elif idx % 2 == 0:
-                slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=2))
+        if is_nav:
+            slide_els = [
+                E("lotus_border", h=74, x=0.5, y=0.026, z=1),
+                E("lotus_border", h=74, x=0.5, y=0.974, z=1),
+                E("frame", photo=idx, style=frame_style, caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
+                E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
+                  color="theme:tape", alpha=230, z=2),
+                E("text", text=subtitle, font="hand", size=52, color="theme:note", max_w=0.82, x=cx, y=0.86,
+                  rotate=round(rng.uniform(-2, 2), 1), shadow=True, line_gap=1.05),
+                E("star", shape="sparkle4", size=rng.randint(40, 65), x=0.14 if idx % 2 == 0 else 0.86,
+                  y=0.18 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
+                E("star", shape="sparkle4", size=rng.randint(28, 44), x=0.88 if idx % 2 == 0 else 0.12,
+                  y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
+            ]
             
-        sl[target_idx].update(
-            bg={"mode": "gradient", "bg1": "#faf8f2", "bg2": "#f1ebe0"},
-            elements=slide_els
-        )
+            desi_stickers_pool = [
+                [("jhumka", 0.84, 0.22, 8), ("mojri", 0.15, 0.74, -12)],
+                [("mehndi_chai", 0.85, 0.70, 6), ("rickshaw", 0.15, 0.24, -6)],
+                [("lotus", 0.84, 0.22, 0), ("dandiya", 0.15, 0.74, 15)],
+                [("garba", 0.85, 0.70, -8), ("diya", 0.15, 0.24, 5)],
+            ]
+            stk_set = desi_stickers_pool[idx % len(desi_stickers_pool)]
+            for kind, sx, sy, srot in stk_set:
+                slide_els.append(E("desi_sticker", kind=kind, size=125, x=sx, y=sy, rotate=srot, z=2))
+                
+            sl[target_idx].update(
+                bg={"mode": "gradient", "bg1": "#580b14", "bg2": "#3e050b"},
+                elements=slide_els
+            )
+        else:
+            slide_els = [
+                E("torn", y=0.76, h=int(0.24 * H), color="theme:band", jag=14, z=0),
+                E("frame", photo=idx, style="polaroid", caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
+                E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
+                  color="theme:tape", alpha=230, z=2),
+                E("text", text=subtitle, font="hand", size=54, color="theme:note", max_w=0.80, x=cx, y=0.86,
+                  rotate=round(rng.uniform(-2, 2), 1), shadow=False, line_gap=1.05),
+                E("star", shape="sparkle4", size=rng.randint(42, 68), x=0.14 if idx % 2 == 0 else 0.86,
+                  y=0.18 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
+                E("star", shape="sparkle4", size=rng.randint(28, 44), x=0.88 if idx % 2 == 0 else 0.12,
+                  y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
+            ]
+            
+            if not cont:
+                if n > 1 and idx % 2 == 1:
+                    inset_ph = (idx + 1) % n
+                    slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
+                    slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
+                elif idx % 2 == 0:
+                    slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=2))
+                
+            sl[target_idx].update(
+                bg={"mode": "gradient", "bg1": "#faf8f2", "bg2": "#f1ebe0"},
+                elements=slide_els
+            )
 
     # In continuous mode, add cross-seam scrapbook bridge elements connecting every pair of slides!
     if cont:
@@ -1100,8 +1512,14 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                   color="theme:star", z=2)
             )
             
-            # 3. Mini photo inset sitting across the seam on alternating slides
-            if b % 2 == 1 and n > 1:
+            # 3. Desi sticker or photo inset sitting across the seam on alternating slides
+            if is_nav:
+                desi_seam_kinds = ["lotus", "jhumka", "dandiya", "garba"]
+                sl[prev_idx]["elements"].append(
+                    E("desi_sticker", kind=desi_seam_kinds[b % len(desi_seam_kinds)], size=130, x=1.0,
+                      y=0.34, rotate=round(rng.uniform(-8, 8), 1), z=2)
+                )
+            elif b % 2 == 1 and n > 1:
                 inset_ph = (b + 1) % n
                 sl[prev_idx]["elements"].append(
                     E("inset", photo=inset_ph, w=220, label="moment", x=1.0,
@@ -1123,9 +1541,10 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                       x=0.98, y=0.93, rotate=2, shadow=False, z=2)
                 )
             
-            # 4. Squiggle wave line crossing the bottom seam
-            sl[prev_idx]["elements"].append(
-                E("squiggle", span=0.5, x=1.0, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=1)
-            )
+            # 4. Squiggle wave line crossing the bottom seam (only for non-nav, nav has lotus borders)
+            if not is_nav:
+                sl[prev_idx]["elements"].append(
+                    E("squiggle", span=0.5, x=1.0, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=1)
+                )
         
     return spec

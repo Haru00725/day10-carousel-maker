@@ -27,7 +27,7 @@ def decode_image_data(img_item):
             img_item = img_item.split(",", 1)[1]
         raw_bytes = base64.b64decode(img_item)
         im = ImageOps.exif_transpose(Image.open(io.BytesIO(raw_bytes))).convert("RGB")
-        im.thumbnail((2200, 2200))
+        im.thumbnail((1200, 1500))
         return im
     return None
 
@@ -198,7 +198,7 @@ def render_slide_handler():
         rendered_slide = ce.render_spec(spec, images, only=slide_index)[slide_index]
 
         buf = io.BytesIO()
-        rendered_slide.save(buf, format="PNG")
+        rendered_slide.save(buf, format="PNG", compress_level=1)
         b64_png = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
         return jsonify({
@@ -226,7 +226,7 @@ def render_all_handler():
         out_b64 = []
         for s in slides:
             buf = io.BytesIO()
-            s.save(buf, format="PNG")
+            s.save(buf, format="PNG", compress_level=1)
             out_b64.append("data:image/png;base64," + base64.b64encode(buf.getvalue()).decode())
 
         return jsonify({
