@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Aesthetic Scrapbook Carousel Maker — Instagram Stories & Canva-like Editor</title>
   <meta name="description" content="Turn your photos into a stunning scrapbook aesthetic Instagram carousel with AI captions, washi tape, torn paper textures, polaroids, and an interactive canvas editor.">
   
+  <!-- Mobile & PWA meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f7f4ee">
+  <meta name="mobile-web-app-capable" content="yes">
+
   <!-- Google Fonts: Editorial Serif, Expressive Handwritten Script, Modern Sans & Monospace -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,31 +38,32 @@
       </div>
     </div>
 
-    <!-- View Switcher Tabs -->
+    <!-- View Switcher Tabs (Responsive Segmented Control) -->
     <nav class="view-tabs" id="view-tabs" aria-label="Workflow Steps">
       <button class="tab-btn active" data-view="create" id="tab-create">
         <span class="tab-icon">📷</span>
-        <span class="tab-label">1. Create</span>
+        <span class="tab-label">Create</span>
       </button>
       <button class="tab-btn" data-view="preview" id="tab-preview" disabled>
         <span class="tab-icon">👁️</span>
-        <span class="tab-label">2. Preview</span>
+        <span class="tab-label">Preview</span>
       </button>
       <button class="tab-btn" data-view="editor" id="tab-editor" disabled>
         <span class="tab-icon">🎨</span>
-        <span class="tab-label">3. Visual Editor</span>
+        <span class="tab-label">Visual Editor</span>
       </button>
     </nav>
 
     <div class="header-right">
-      <button class="btn btn-secondary btn-sm" id="btn-load-json" title="Load a saved design (.json)">
+      <button class="btn btn-secondary btn-sm header-desktop-only" id="btn-load-json" title="Load a saved design (.json)">
         📂 Load
       </button>
-      <button class="btn btn-secondary btn-sm" id="btn-save-json" title="Save this design spec (.json)" disabled>
+      <button class="btn btn-secondary btn-sm header-desktop-only" id="btn-save-json" title="Save this design spec (.json)" disabled>
         💾 Save
       </button>
       <button class="btn btn-primary btn-sm" id="btn-export-quick" disabled>
-        ⬇️ Export ZIP
+        <span class="btn-icon-text">⬇️</span>
+        <span class="btn-label-text">Export ZIP</span>
       </button>
     </div>
   </header>
@@ -68,7 +75,7 @@
     <section class="view-panel active" id="view-create">
       <div class="create-hero">
         <div class="scrapbook-badge">Scrapbook Aesthetic</div>
-        <h1 class="hero-title">Create Your Dream Aesthetic Carousel</h1>
+        <h1 class="hero-title">Create Your Aesthetic Carousel</h1>
         <p class="hero-subtitle">
           Drop your favorite photos. AI reads the vibe and crafts the story with paper textures, washi tape, polaroids, and handwritten notes.
         </p>
@@ -78,11 +85,13 @@
         <!-- Photo Upload & Thumbnail Stage -->
         <div class="upload-section">
           <div class="dropzone" id="photo-dropzone">
-            <input type="file" id="file-input" multiple accept="image/png,image/jpeg,image/webp,image/avif" class="sr-only">
+            <!-- Native file input supporting camera capture on mobile -->
+            <input type="file" id="file-input" multiple accept="image/*" class="sr-only">
             <div class="dropzone-content">
               <div class="dropzone-icon">📸</div>
-              <h3 class="dropzone-title">Drop your photos here, or <span class="browse-link">browse</span></h3>
-              <p class="dropzone-hint">Upload 2 to 10 photos. 4 to 6 photos create the most engaging carousel.</p>
+              <h3 class="dropzone-title">Add Photos (tap or drag)</h3>
+              <p class="dropzone-hint">Upload 2 to 10 photos from camera or gallery. 4 to 6 photos make the best carousel.</p>
+              <button type="button" class="btn btn-secondary btn-sm mobile-upload-trigger">Choose Photos</button>
             </div>
           </div>
 
@@ -209,10 +218,10 @@
               ✏️ Open in Canvas Editor
             </button>
             <button class="btn btn-outline" id="btn-copy-caption">
-              📋 Copy Post Caption
+              📋 Copy Caption
             </button>
             <button class="btn btn-primary" id="btn-download-zip">
-              ⬇️ Download All (ZIP)
+              ⬇️ Download ZIP
             </button>
           </div>
         </div>
@@ -261,6 +270,16 @@
         <!-- Main Editor Center Stage -->
         <div class="editor-center-stage">
           
+          <!-- Mobile Editor Top Bar (Instagram Stories Style) -->
+          <div class="mobile-editor-top-bar" id="mobile-editor-top-bar">
+            <button class="mobile-top-btn" id="btn-mobile-back" title="Back to Preview">‹ Preview</button>
+            <div class="mobile-slide-indicator" id="mobile-slide-indicator">Slide 01/05</div>
+            <div class="mobile-top-actions">
+              <button class="mobile-top-icon-btn" id="btn-mobile-undo" title="Undo">↩</button>
+              <button class="mobile-top-icon-btn" id="btn-mobile-redo" title="Redo">↪</button>
+            </div>
+          </div>
+
           <!-- Contextual Floating / Fixed Toolbar -->
           <div class="contextual-toolbar" id="contextual-toolbar">
             
@@ -269,7 +288,7 @@
               <button class="tool-btn" id="btn-undo" title="Undo (Cmd+Z)">↩ Undo</button>
               <button class="tool-btn" id="btn-redo" title="Redo (Cmd+Shift+Z)">↪ Redo</button>
               <div class="tool-divider"></div>
-              <span class="tool-label">Canvas Zoom:</span>
+              <span class="tool-label">Zoom:</span>
               <button class="tool-btn" id="btn-zoom-fit">Fit</button>
               <button class="tool-btn" id="btn-zoom-in">＋</button>
               <button class="tool-btn" id="btn-zoom-out">－</button>
@@ -308,14 +327,7 @@
 
             <!-- Photo / Polaroid Toolbar (Active when image/frame is selected) -->
             <div class="toolbar-group hidden" id="tb-photo">
-              <span class="tool-label">Photo / Polaroid:</span>
-              <select class="tool-select" id="tb-photo-style" title="Frame Style">
-                <option value="polaroid">Authentic Polaroid</option>
-                <option value="minimal">Minimal White Border</option>
-                <option value="film">Film Frame</option>
-                <option value="torn">Torn Edge Cutout</option>
-              </select>
-
+              <span class="tool-label">Polaroid / Cutout:</span>
               <button class="tool-btn" id="btn-photo-replace" title="Replace Photo">🔄 Change Photo</button>
               <button class="tool-btn" id="btn-layer-up-photo" title="Bring Forward">⬆</button>
               <button class="tool-btn" id="btn-layer-down-photo" title="Send Backward">⬇</button>
@@ -356,7 +368,7 @@
             </button>
             <button class="mobile-dock-btn" data-panel="tape">
               <span class="dock-icon">🩹</span>
-              <span class="dock-label">Washi Tape</span>
+              <span class="dock-label">Tape</span>
             </button>
             <button class="mobile-dock-btn" data-panel="stickers">
               <span class="dock-icon">⭐</span>
@@ -365,6 +377,10 @@
             <button class="mobile-dock-btn" data-panel="paper">
               <span class="dock-icon">🎨</span>
               <span class="dock-label">Paper</span>
+            </button>
+            <button class="mobile-dock-btn" data-panel="slides">
+              <span class="dock-icon">🎞️</span>
+              <span class="dock-label">Slides</span>
             </button>
             <button class="mobile-dock-btn" id="btn-mobile-done">
               <span class="dock-icon">✓</span>
@@ -492,6 +508,129 @@
     </section>
 
   </main>
+
+  <!-- ==================== MOBILE BOTTOM SHEET DRAWER (Instagram Stories Style) ==================== -->
+  <div class="bottom-sheet-backdrop" id="bottom-sheet-backdrop"></div>
+  <div class="bottom-sheet" id="bottom-sheet" aria-hidden="true">
+    <div class="sheet-drag-handle" id="sheet-drag-handle">
+      <div class="handle-bar"></div>
+    </div>
+    <div class="sheet-header">
+      <h3 class="sheet-title" id="sheet-title">Add Elements</h3>
+      <button class="sheet-close-btn" id="sheet-close-btn" aria-label="Close Sheet">✕</button>
+    </div>
+    <div class="sheet-content" id="sheet-content">
+      
+      <!-- Panel 1: Text Options -->
+      <div class="sheet-panel" id="panel-text">
+        <div class="sheet-grid">
+          <button class="sheet-item-btn" id="m-add-text-title">
+            <span class="lib-preview font-playfair">Headline</span>
+            <span>Editorial Title</span>
+          </button>
+          <button class="sheet-item-btn" id="m-add-text-hand">
+            <span class="lib-preview font-caveat">handwritten note</span>
+            <span>Handwritten Note</span>
+          </button>
+          <button class="sheet-item-btn" id="m-add-text-body">
+            <span class="lib-preview font-poppins">Story description</span>
+            <span>Body Caption</span>
+          </button>
+          <button class="sheet-item-btn" id="m-add-text-stamp">
+            <span class="lib-preview font-mono">01 / OCT 24</span>
+            <span>Date Stamp</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel 2: Polaroid / Photo Options -->
+      <div class="sheet-panel hidden" id="panel-polaroid">
+        <div class="sheet-section-title">Tap photo to add as Polaroid</div>
+        <div class="sheet-photos-list" id="sheet-photos-list">
+          <!-- Populated dynamically with uploaded photos -->
+        </div>
+        <div style="margin-top: 1rem;">
+          <button class="btn btn-secondary btn-block btn-sm" id="m-add-torn-paper">📄 Add Torn Paper Band</button>
+        </div>
+      </div>
+
+      <!-- Panel 3: Washi Tape Options -->
+      <div class="sheet-panel hidden" id="panel-tape">
+        <div class="sheet-grid">
+          <button class="sheet-item-btn tape-sheet-btn" data-tape="kraft">
+            <div class="tape-preview tape-kraft"></div>
+            <span>Kraft Tape</span>
+          </button>
+          <button class="sheet-item-btn tape-sheet-btn" data-tape="sage">
+            <div class="tape-preview tape-sage"></div>
+            <span>Sage Tape</span>
+          </button>
+          <button class="sheet-item-btn tape-sheet-btn" data-tape="rose">
+            <div class="tape-preview tape-rose"></div>
+            <span>Blush Tape</span>
+          </button>
+          <button class="sheet-item-btn tape-sheet-btn" data-tape="gold">
+            <div class="tape-preview tape-gold"></div>
+            <span>Gold Stripe</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel 4: Stickers & Doodles -->
+      <div class="sheet-panel hidden" id="panel-stickers">
+        <div class="sheet-grid stickers-grid">
+          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="star-sparkle">
+            <span class="sticker-symbol">✨</span>
+            <span>Sparkle</span>
+          </button>
+          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="star-5">
+            <span class="sticker-symbol">⭐</span>
+            <span>Star</span>
+          </button>
+          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="arrow">
+            <span class="sticker-symbol">↗️</span>
+            <span>Arrow</span>
+          </button>
+          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="squiggle">
+            <span class="sticker-symbol">〰️</span>
+            <span>Squiggle</span>
+          </button>
+          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="heart">
+            <span class="sticker-symbol">🤍</span>
+            <span>Heart</span>
+          </button>
+          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="paperclip">
+            <span class="sticker-symbol">📎</span>
+            <span>Clip</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel 5: Paper Textures -->
+      <div class="sheet-panel hidden" id="panel-paper">
+        <div class="sheet-paper-list">
+          <button class="paper-swatch m-paper-swatch active" data-paper="cream" style="background: #f7f4ee;">Warm Cream Paper</button>
+          <button class="paper-swatch m-paper-swatch" data-paper="kraft" style="background: #eedec5;">Kraft Sketchbook Paper</button>
+          <button class="paper-swatch m-paper-swatch" data-paper="linen" style="background: #f2f5f2;">Linen Sage Paper</button>
+          <button class="paper-swatch m-paper-swatch" data-paper="blush" style="background: #fcf4f4;">Rose Tinted Paper</button>
+          <button class="paper-swatch m-paper-swatch" data-paper="midnight" style="background: #232228; color: #fff;">Midnight Chalk Paper</button>
+        </div>
+      </div>
+
+      <!-- Panel 6: Slides Navigation & Management -->
+      <div class="sheet-panel hidden" id="panel-slides">
+        <div class="sheet-slides-strip" id="sheet-slides-strip">
+          <!-- Slide cards injected dynamically -->
+        </div>
+        <div class="sheet-slide-actions">
+          <button class="btn btn-secondary btn-sm" id="m-btn-dup-slide">⧉ Duplicate</button>
+          <button class="btn btn-outline btn-sm text-danger" id="m-btn-del-slide">🗑️ Delete</button>
+          <button class="btn btn-primary btn-sm" id="m-btn-add-slide">➕ Add Slide</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- ==================== STAGED GENERATION MODAL ==================== -->
   <dialog id="modal-loading" class="scrapbook-dialog">

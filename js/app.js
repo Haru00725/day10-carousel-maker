@@ -124,9 +124,15 @@
       switchView('editor');
     });
 
-    document.getElementById('btn-mobile-done').addEventListener('click', () => {
-      switchView('preview');
-    });
+    const mDone = document.getElementById('btn-mobile-done');
+    if (mDone) {
+      mDone.addEventListener('click', () => {
+        switchView('preview');
+      });
+    }
+
+    // Expose for mobile header & navigation
+    window.switchAppView = switchView;
   }
 
   // ==========================================================================
@@ -173,8 +179,15 @@
     const dropzone = document.getElementById('photo-dropzone');
     const fileInput = document.getElementById('file-input');
     const clearBtn = document.getElementById('btn-clear-photos');
+    const mobileTrigger = document.querySelector('.mobile-upload-trigger');
 
     dropzone.addEventListener('click', () => fileInput.click());
+    if (mobileTrigger) {
+      mobileTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+      });
+    }
 
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();

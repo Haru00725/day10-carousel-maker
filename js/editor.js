@@ -19,6 +19,8 @@ class ScrapbookEditor {
     this.baseHeight = 1350;
     this.scaleFactor = 1;
 
+    this.isMobile = window.innerWidth <= 768;
+
     this.init();
   }
 
@@ -28,19 +30,23 @@ class ScrapbookEditor {
       selectionColor: 'rgba(212, 155, 69, 0.15)',
       selectionBorderColor: '#c28b5e',
       selectionLineWidth: 1.5,
+      allowTouchScrolling: false, // Prevents webpage bounce on mobile touch drag
     });
 
-    // Custom Fabric control styling (Canva-like handles)
+    // Custom Fabric control styling (Canva-like touch handles)
+    const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     fabric.Object.prototype.transparentCorners = false;
     fabric.Object.prototype.cornerColor = '#2c2523';
     fabric.Object.prototype.cornerStrokeColor = '#ffffff';
     fabric.Object.prototype.borderColor = '#c28b5e';
-    fabric.Object.prototype.cornerSize = 10;
+    fabric.Object.prototype.cornerSize = isTouch ? 14 : 10;
     fabric.Object.prototype.cornerStyle = 'circle';
-    fabric.Object.prototype.borderScaleFactor = 1.5;
+    fabric.Object.prototype.borderScaleFactor = isTouch ? 2.0 : 1.5;
+    fabric.Object.prototype.touchCornerSize = 32;
 
     this.bindEvents();
     this.bindToolbar();
+    this.bindMobileDock();
   }
 
   bindEvents() {
@@ -54,11 +60,13 @@ class ScrapbookEditor {
     });
 
     // Window resize to fit canvas in viewport
-    window.addEventListener('resize', () => this.fitCanvasToViewport());
+    window.addEventListener('resize', () => {
+      this.isMobile = window.innerWidth <= 768;
+      this.fitCanvasToViewport();
+    });
 
-    // Keyboard shortcuts: Cmd+Z (undo), Cmd+Shift+Z (redo), Backspace/Delete (delete element)
+    // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
-      // Don't intercept if user is typing in an input
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
@@ -77,20 +85,56 @@ class ScrapbookEditor {
         }
       }
     });
+
+    // Touch gesture enhancements for mobile devices
+    this.bindTouchGestures();
+  }
+
+  bindTouchGestures() {
+    let lastScale = 1;
+    let lastAngle = 0;
+
+    this.canvas.on('touch:gesture', (e) => {
+      const target = this.canvas.getActiveObject();
+      if (!target) return;
+
+      if (e.e.touches && e.e.touches.length === 2) {
+        if (e.self.scale) {
+          target.scale(lastScale * e.self.scale);
+        }
+        if (e.self.rotation) {
+          target.rotate(lastAngle + e.self.rotation);
+        }
+        this.canvas.renderAll();
+      }
+    });
+
+    this.canvas.on('touch:drag', (e) => {
+      // Allow single touch drag on active object
+      const target = this.canvas.getActiveObject();
+      if (target && e.self.x && e.self.y) {
+        target.set({
+          left: target.left + e.self.x,
+          top: target.top + e.self.y
+        });
+        target.setCoords();
+        this.canvas.renderAll();
+      }
+    });
   }
 
   fitCanvasToViewport() {
     const viewport = document.getElementById('canvas-viewport');
     if (!viewport || !this.canvas) return;
 
-    const availableWidth = viewport.clientWidth - 48;
-    const availableHeight = viewport.clientHeight - 48;
+    const availableWidth = viewport.clientWidth - (this.isMobile ? 16 : 48);
+    const availableHeight = viewport.clientHeight - (this.isMobile ? 16 : 48);
 
     const scaleW = availableWidth / this.baseWidth;
     const scaleH = availableHeight / this.baseHeight;
-    const scale = Math.min(scaleW, scaleH, 0.75); // Don't scale up past comfortable editor size
+    const scale = Math.min(scaleW, scaleH);
 
-    this.scaleFactor = Math.max(scale, 0.25);
+    this.scaleFactor = Math.max(scale, 0.2);
 
     this.canvas.setWidth(this.baseWidth * this.scaleFactor);
     this.canvas.setHeight(this.baseHeight * this.scaleFactor);
@@ -107,6 +151,13 @@ class ScrapbookEditor {
     this.baseWidth = size[0];
     this.baseHeight = size[1];
 
+    // Update mobile indicator
+    const total = spec.slides ? spec.slides.length : 1;
+    const ind = document.getElementById('mobile-slide-indicator');
+    if (ind) {
+      ind.textContent = `Slide ${String(slideIndex + 1).padStart(2, '0')}/${String(total).padStart(2, '0')}`;
+    }
+
     this.fitCanvasToViewport();
     this.renderSlideObjects(slideIndex);
     this.resetHistory();
@@ -121,8 +172,7 @@ class ScrapbookEditor {
 
     const theme = this.spec.theme || {};
 
-    // 1. Render Background
-    const bg = slide.bg || { mode: 'gradient' };
+    // 1. Background
     const bg1 = theme.bg1 || '#f8f5ee';
     const bg2 = theme.bg2 || '#f0ebe1';
 
@@ -139,7 +189,7 @@ class ScrapbookEditor {
       () => this.canvas.renderAll()
     );
 
-    // 2. Render Elements
+    // 2. Elements
     const elements = slide.elements || [];
     for (const el of elements) {
       await this.createFabricElement(el, theme);
@@ -187,7 +237,6 @@ class ScrapbookEditor {
       }
 
       case 'frame': {
-        // Polaroid Frame
         const photoIdx = el.photo || 0;
         const imgDataUrl = this.images[photoIdx] || this.images[0];
         obj = await this.createPolaroidObject(imgDataUrl, el.caption || '', el.font, x, y, angle, el.w || 540);
@@ -195,7 +244,6 @@ class ScrapbookEditor {
       }
 
       case 'tape': {
-        // Washi Tape Strip
         const w = el.w || 240;
         const h = el.h || 58;
         const color = resolveColor(el.color || 'theme:tape');
@@ -218,7 +266,6 @@ class ScrapbookEditor {
       }
 
       case 'star': {
-        // Star Doodle
         const sz = el.size || 50;
         const color = resolveColor(el.color || 'theme:star');
         obj = this.createStarObject(x, y, sz, color, angle, el.shape || 'sparkle4');
@@ -226,7 +273,6 @@ class ScrapbookEditor {
       }
 
       case 'torn': {
-        // Torn Paper Layer
         const bandH = el.h || 300;
         const color = resolveColor(el.color || 'theme:band');
         obj = new fabric.Rect({
@@ -245,21 +291,18 @@ class ScrapbookEditor {
       }
 
       case 'arrow': {
-        // Hand-drawn arrow
         const color = resolveColor(el.color || 'theme:note');
         obj = this.createArrowObject(x, y, angle, color, el.width || 6);
         break;
       }
 
       case 'squiggle': {
-        // Highlight Squiggle
         const color = resolveColor(el.color || 'theme:hl');
         obj = this.createSquiggleObject(x, y, el.span || 0.4, color);
         break;
       }
 
       case 'inset': {
-        // Small Inset Photo
         const photoIdx = el.photo || 0;
         const imgDataUrl = this.images[photoIdx] || this.images[0];
         obj = await this.createInsetPhotoObject(imgDataUrl, el.label || '', x, y, angle, el.w || 220);
@@ -444,129 +487,352 @@ class ScrapbookEditor {
   }
 
   // ==========================================================================
-  // Selection & Contextual Toolbar Handling
+  // Selection Handling
   // ==========================================================================
   onObjectSelected(obj) {
     const tbText = document.getElementById('tb-text');
     const tbPhoto = document.getElementById('tb-photo');
     const tbSticker = document.getElementById('tb-sticker');
 
-    tbText.classList.add('hidden');
-    tbPhoto.classList.add('hidden');
-    tbSticker.classList.add('hidden');
+    if (tbText) tbText.classList.add('hidden');
+    if (tbPhoto) tbPhoto.classList.add('hidden');
+    if (tbSticker) tbSticker.classList.add('hidden');
 
     if (obj.type === 'i-text' || obj.type === 'text') {
-      tbText.classList.remove('hidden');
-      document.getElementById('tb-text-font').value = obj.fontFamily || 'Caveat';
-      document.getElementById('tb-text-size').value = obj.fontSize || 48;
-      document.getElementById('tb-text-color').value = obj.fill || '#2c2523';
-      document.getElementById('btn-text-bold').classList.toggle('active', obj.fontWeight === 'bold');
-      document.getElementById('btn-text-italic').classList.toggle('active', obj.fontStyle === 'italic');
+      if (tbText) {
+        tbText.classList.remove('hidden');
+        document.getElementById('tb-text-font').value = obj.fontFamily || 'Caveat';
+        document.getElementById('tb-text-size').value = obj.fontSize || 48;
+        document.getElementById('tb-text-color').value = obj.fill || '#2c2523';
+        document.getElementById('btn-text-bold').classList.toggle('active', obj.fontWeight === 'bold');
+        document.getElementById('btn-text-italic').classList.toggle('active', obj.fontStyle === 'italic');
+      }
     } else if (obj.scrapbookType === 'polaroid' || obj.scrapbookType === 'inset') {
-      tbPhoto.classList.remove('hidden');
+      if (tbPhoto) tbPhoto.classList.remove('hidden');
     } else {
-      tbSticker.classList.remove('hidden');
-      document.getElementById('tb-sticker-color').value = obj.fill || '#d49b45';
-      document.getElementById('tb-sticker-opacity').value = obj.opacity || 1;
+      if (tbSticker) {
+        tbSticker.classList.remove('hidden');
+        document.getElementById('tb-sticker-color').value = obj.fill || '#d49b45';
+        document.getElementById('tb-sticker-opacity').value = obj.opacity || 1;
+      }
     }
   }
 
   onSelectionCleared() {
-    document.getElementById('tb-text').classList.add('hidden');
-    document.getElementById('tb-photo').classList.add('hidden');
-    document.getElementById('tb-sticker').classList.add('hidden');
+    const tbText = document.getElementById('tb-text');
+    const tbPhoto = document.getElementById('tb-photo');
+    const tbSticker = document.getElementById('tb-sticker');
+    if (tbText) tbText.classList.add('hidden');
+    if (tbPhoto) tbPhoto.classList.add('hidden');
+    if (tbSticker) tbSticker.classList.add('hidden');
+  }
+
+  // ==========================================================================
+  // Mobile Dock & Bottom Sheet Drawer Handling
+  // ==========================================================================
+  bindMobileDock() {
+    const dockButtons = document.querySelectorAll('.mobile-dock-btn[data-panel]');
+    const sheet = document.getElementById('bottom-sheet');
+    const backdrop = document.getElementById('bottom-sheet-backdrop');
+    const closeBtn = document.getElementById('sheet-close-btn');
+    const sheetTitle = document.getElementById('sheet-title');
+
+    const openSheet = (panelName, title) => {
+      // Hide all panels
+      document.querySelectorAll('.sheet-panel').forEach(p => p.classList.add('hidden'));
+
+      // Show requested panel
+      const targetPanel = document.getElementById(`panel-${panelName}`);
+      if (targetPanel) {
+        targetPanel.classList.remove('hidden');
+      }
+
+      sheetTitle.textContent = title;
+      sheet.classList.add('active');
+      backdrop.classList.add('active');
+
+      // If opening polaroid, populate photo list
+      if (panelName === 'polaroid') {
+        this.populateSheetPhotos();
+      } else if (panelName === 'slides') {
+        this.populateSheetSlides();
+      }
+    };
+
+    const closeSheet = () => {
+      sheet.classList.remove('active');
+      backdrop.classList.remove('active');
+    };
+
+    dockButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const panel = btn.dataset.panel;
+        const titles = {
+          'text': 'Add Typography',
+          'polaroid': 'Add Photos & Polaroid',
+          'tape': 'Add Washi Tape',
+          'stickers': 'Add Stickers & Doodles',
+          'paper': 'Change Paper Texture',
+          'slides': 'Manage Slides'
+        };
+        openSheet(panel, titles[panel] || 'Add Elements');
+      });
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', closeSheet);
+    if (backdrop) backdrop.addEventListener('click', closeSheet);
+
+    // Mobile Top Bar Back & Undo/Redo
+    const backBtn = document.getElementById('btn-mobile-back');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        if (window.switchAppView) window.switchAppView('preview');
+      });
+    }
+
+    const mUndo = document.getElementById('btn-mobile-undo');
+    if (mUndo) mUndo.addEventListener('click', () => this.undo());
+
+    const mRedo = document.getElementById('btn-mobile-redo');
+    if (mRedo) mRedo.addEventListener('click', () => this.redo());
+
+    // Mobile Bottom Sheet Action Items
+    this.bindSheetActions(closeSheet);
+  }
+
+  bindSheetActions(closeSheet) {
+    // Text additions
+    const mTitle = document.getElementById('m-add-text-title');
+    if (mTitle) {
+      mTitle.addEventListener('click', () => {
+        this.addTextElement('SCRAPBOOK TITLE', 'Playfair Display', 80, true);
+        closeSheet();
+      });
+    }
+
+    const mHand = document.getElementById('m-add-text-hand');
+    if (mHand) {
+      mHand.addEventListener('click', () => {
+        this.addTextElement('handwritten memory...', 'Caveat', 64, false);
+        closeSheet();
+      });
+    }
+
+    const mBody = document.getElementById('m-add-text-body');
+    if (mBody) {
+      mBody.addEventListener('click', () => {
+        this.addTextElement('Tell the story behind this moment', 'Poppins', 40, false);
+        closeSheet();
+      });
+    }
+
+    const mStamp = document.getElementById('m-add-text-stamp');
+    if (mStamp) {
+      mStamp.addEventListener('click', () => {
+        this.addTextElement('01 / MEMORY ARCHIVE', 'Space Mono', 32, false);
+        closeSheet();
+      });
+    }
+
+    // Torn paper addition
+    const mTorn = document.getElementById('m-add-torn-paper');
+    if (mTorn) {
+      mTorn.addEventListener('click', () => {
+        this.addTornPaperElement();
+        closeSheet();
+      });
+    }
+
+    // Washi Tape sheet buttons
+    document.querySelectorAll('.tape-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tape = btn.dataset.tape;
+        const colorMap = {
+          'kraft': 'rgba(228, 203, 169, 0.88)',
+          'sage': 'rgba(163, 196, 168, 0.85)',
+          'rose': 'rgba(226, 168, 168, 0.85)',
+          'gold': 'rgba(244, 218, 142, 0.88)',
+        };
+        this.addTapeElement(colorMap[tape] || colorMap.kraft);
+        closeSheet();
+      });
+    });
+
+    // Sticker sheet buttons
+    document.querySelectorAll('.sticker-sheet-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.addStickerElement(btn.dataset.sticker);
+        closeSheet();
+      });
+    });
+
+    // Mobile paper swatches
+    document.querySelectorAll('.m-paper-swatch').forEach((swatch) => {
+      swatch.addEventListener('click', () => {
+        document.querySelectorAll('.m-paper-swatch').forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+        const color = swatch.style.backgroundColor;
+        this.canvas.setBackgroundColor(color, () => this.canvas.renderAll());
+        this.syncCurrentSlideToSpec();
+        closeSheet();
+      });
+    });
+  }
+
+  populateSheetPhotos() {
+    const list = document.getElementById('sheet-photos-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const closeSheet = () => {
+      document.getElementById('bottom-sheet').classList.remove('active');
+      document.getElementById('bottom-sheet-backdrop').classList.remove('active');
+    };
+
+    this.images.forEach((imgSrc, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'sheet-photo-thumb';
+      
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.alt = `Photo ${idx + 1}`;
+
+      thumb.appendChild(img);
+      thumb.addEventListener('click', async () => {
+        await this.addPolaroidWithPhoto(imgSrc);
+        closeSheet();
+      });
+
+      list.appendChild(thumb);
+    });
+  }
+
+  populateSheetSlides() {
+    const strip = document.getElementById('sheet-slides-strip');
+    if (!strip) return;
+    strip.innerHTML = '';
+
+    const total = this.spec ? this.spec.slides.length : 0;
+    for (let idx = 0; idx < total; idx++) {
+      const item = document.createElement('div');
+      item.className = `filmstrip-thumb ${idx === this.currentSlideIndex ? 'active' : ''}`;
+      
+      const img = document.createElement('img');
+      img.src = this.images[idx % (this.images.length || 1)];
+      img.alt = `Slide ${idx + 1}`;
+
+      item.appendChild(img);
+      item.addEventListener('click', () => {
+        this.currentSlideIndex = idx;
+        this.loadSlide(idx, this.spec, this.images);
+        document.getElementById('bottom-sheet').classList.remove('active');
+        document.getElementById('bottom-sheet-backdrop').classList.remove('active');
+      });
+
+      strip.appendChild(item);
+    }
+  }
+
+  async addPolaroidWithPhoto(imgSrc) {
+    const obj = await this.createPolaroidObject(imgSrc, 'polaroid memory', 'hand', this.baseWidth / 2, this.baseHeight / 2, -2.5, 520);
+    this.canvas.add(obj);
+    this.canvas.setActiveObject(obj);
+    this.canvas.renderAll();
+    this.saveHistoryState();
+    this.syncCurrentSlideToSpec();
   }
 
   bindToolbar() {
     // Text controls
-    document.getElementById('tb-text-font').addEventListener('change', (e) => {
-      const active = this.canvas.getActiveObject();
-      if (active && (active.type === 'i-text' || active.type === 'text')) {
-        active.set('fontFamily', e.target.value);
-        this.canvas.renderAll();
-        this.syncCurrentSlideToSpec();
-      }
-    });
-
-    document.getElementById('tb-text-size').addEventListener('input', (e) => {
-      const active = this.canvas.getActiveObject();
-      if (active && (active.type === 'i-text' || active.type === 'text')) {
-        active.set('fontSize', parseInt(e.target.value, 10));
-        this.canvas.renderAll();
-        this.syncCurrentSlideToSpec();
-      }
-    });
-
-    document.getElementById('tb-text-color').addEventListener('input', (e) => {
-      const active = this.canvas.getActiveObject();
-      if (active && (active.type === 'i-text' || active.type === 'text')) {
-        active.set('fill', e.target.value);
-        this.canvas.renderAll();
-        this.syncCurrentSlideToSpec();
-      }
-    });
-
-    document.getElementById('btn-text-bold').addEventListener('click', () => {
-      const active = this.canvas.getActiveObject();
-      if (active && (active.type === 'i-text' || active.type === 'text')) {
-        const isBold = active.fontWeight === 'bold';
-        active.set('fontWeight', isBold ? 'normal' : 'bold');
-        document.getElementById('btn-text-bold').classList.toggle('active', !isBold);
-        this.canvas.renderAll();
-        this.syncCurrentSlideToSpec();
-      }
-    });
-
-    document.getElementById('btn-text-italic').addEventListener('click', () => {
-      const active = this.canvas.getActiveObject();
-      if (active && (active.type === 'i-text' || active.type === 'text')) {
-        const isItalic = active.fontStyle === 'italic';
-        active.set('fontStyle', isItalic ? 'normal' : 'italic');
-        document.getElementById('btn-text-italic').classList.toggle('active', !isItalic);
-        this.canvas.renderAll();
-        this.syncCurrentSlideToSpec();
-      }
-    });
-
-    // Alignment
-    ['left', 'center', 'right'].forEach((align) => {
-      document.getElementById(`btn-align-${align}`).addEventListener('click', () => {
+    const fontSelect = document.getElementById('tb-text-font');
+    if (fontSelect) {
+      fontSelect.addEventListener('change', (e) => {
         const active = this.canvas.getActiveObject();
         if (active && (active.type === 'i-text' || active.type === 'text')) {
-          active.set('textAlign', align);
+          active.set('fontFamily', e.target.value);
           this.canvas.renderAll();
           this.syncCurrentSlideToSpec();
         }
       });
+    }
+
+    const sizeInput = document.getElementById('tb-text-size');
+    if (sizeInput) {
+      sizeInput.addEventListener('input', (e) => {
+        const active = this.canvas.getActiveObject();
+        if (active && (active.type === 'i-text' || active.type === 'text')) {
+          active.set('fontSize', parseInt(e.target.value, 10));
+          this.canvas.renderAll();
+          this.syncCurrentSlideToSpec();
+        }
+      });
+    }
+
+    const colorInput = document.getElementById('tb-text-color');
+    if (colorInput) {
+      colorInput.addEventListener('input', (e) => {
+        const active = this.canvas.getActiveObject();
+        if (active && (active.type === 'i-text' || active.type === 'text')) {
+          active.set('fill', e.target.value);
+          this.canvas.renderAll();
+          this.syncCurrentSlideToSpec();
+        }
+      });
+    }
+
+    // Alignment
+    ['left', 'center', 'right'].forEach((align) => {
+      const btn = document.getElementById(`btn-align-${align}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const active = this.canvas.getActiveObject();
+          if (active && (active.type === 'i-text' || active.type === 'text')) {
+            active.set('textAlign', align);
+            this.canvas.renderAll();
+            this.syncCurrentSlideToSpec();
+          }
+        });
+      }
     });
 
-    // Layer arrangement
-    document.getElementById('btn-layer-up').addEventListener('click', () => this.bringForward());
-    document.getElementById('btn-layer-down').addEventListener('click', () => this.sendBackward());
-    document.getElementById('btn-delete-element').addEventListener('click', () => this.deleteSelected());
+    // Layer controls
+    ['btn-layer-up', 'btn-layer-up-photo', 'btn-layer-up-sticker'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.bringForward());
+    });
 
-    document.getElementById('btn-layer-up-photo').addEventListener('click', () => this.bringForward());
-    document.getElementById('btn-layer-down-photo').addEventListener('click', () => this.sendBackward());
-    document.getElementById('btn-delete-photo').addEventListener('click', () => this.deleteSelected());
+    ['btn-layer-down', 'btn-layer-down-photo', 'btn-layer-down-sticker'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.sendBackward());
+    });
 
-    document.getElementById('btn-layer-up-sticker').addEventListener('click', () => this.bringForward());
-    document.getElementById('btn-layer-down-sticker').addEventListener('click', () => this.sendBackward());
-    document.getElementById('btn-delete-sticker').addEventListener('click', () => this.deleteSelected());
+    ['btn-delete-element', 'btn-delete-photo', 'btn-delete-sticker'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', () => this.deleteSelected());
+    });
 
-    // Undo / Redo buttons
-    document.getElementById('btn-undo').addEventListener('click', () => this.undo());
-    document.getElementById('btn-redo').addEventListener('click', () => this.redo());
+    // Undo / Redo
+    const undoBtn = document.getElementById('btn-undo');
+    if (undoBtn) undoBtn.addEventListener('click', () => this.undo());
+
+    const redoBtn = document.getElementById('btn-redo');
+    if (redoBtn) redoBtn.addEventListener('click', () => this.redo());
 
     // Zoom controls
-    document.getElementById('btn-zoom-fit').addEventListener('click', () => this.fitCanvasToViewport());
-    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+    const zFit = document.getElementById('btn-zoom-fit');
+    if (zFit) zFit.addEventListener('click', () => this.fitCanvasToViewport());
+
+    const zIn = document.getElementById('btn-zoom-in');
+    if (zIn) zIn.addEventListener('click', () => {
       this.scaleFactor *= 1.15;
       this.canvas.setWidth(this.baseWidth * this.scaleFactor);
       this.canvas.setHeight(this.baseHeight * this.scaleFactor);
       this.canvas.setZoom(this.scaleFactor);
       this.canvas.renderAll();
     });
-    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+
+    const zOut = document.getElementById('btn-zoom-out');
+    if (zOut) zOut.addEventListener('click', () => {
       this.scaleFactor *= 0.85;
       this.canvas.setWidth(this.baseWidth * this.scaleFactor);
       this.canvas.setHeight(this.baseHeight * this.scaleFactor);
@@ -574,57 +840,61 @@ class ScrapbookEditor {
       this.canvas.renderAll();
     });
 
-    // Add elements from library
-    document.getElementById('add-text-title').addEventListener('click', () => {
-      this.addTextElement('SCRAPBOOK TITLE', 'Playfair Display', 80, true);
-    });
+    // Desktop Library actions
+    const dTitle = document.getElementById('add-text-title');
+    if (dTitle) {
+      dTitle.addEventListener('click', () => {
+        this.addTextElement('SCRAPBOOK TITLE', 'Playfair Display', 80, true);
+      });
+    }
 
-    document.getElementById('add-text-hand').addEventListener('click', () => {
-      this.addTextElement('handwritten memory...', 'Caveat', 64, false);
-    });
+    const dHand = document.getElementById('add-text-hand');
+    if (dHand) {
+      dHand.addEventListener('click', () => {
+        this.addTextElement('handwritten memory...', 'Caveat', 64, false);
+      });
+    }
 
-    document.getElementById('add-text-body').addEventListener('click', () => {
-      this.addTextElement('Tell the story behind this moment', 'Poppins', 40, false);
-    });
+    const dBody = document.getElementById('add-text-body');
+    if (dBody) {
+      dBody.addEventListener('click', () => {
+        this.addTextElement('Tell the story behind this moment', 'Poppins', 40, false);
+      });
+    }
 
-    document.getElementById('add-text-stamp').addEventListener('click', () => {
-      this.addTextElement('01 / MEMORY ARCHIVE', 'Space Mono', 32, false);
-    });
+    const dStamp = document.getElementById('add-text-stamp');
+    if (dStamp) {
+      dStamp.addEventListener('click', () => {
+        this.addTextElement('01 / MEMORY ARCHIVE', 'Space Mono', 32, false);
+      });
+    }
 
-    // Washi Tape library buttons
     document.querySelectorAll('.tape-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const tapeType = btn.dataset.tape;
+        const tape = btn.dataset.tape;
         const colorMap = {
           'kraft': 'rgba(228, 203, 169, 0.88)',
           'sage': 'rgba(163, 196, 168, 0.85)',
           'rose': 'rgba(226, 168, 168, 0.85)',
           'gold': 'rgba(244, 218, 142, 0.88)',
         };
-        this.addTapeElement(colorMap[tapeType] || colorMap.kraft);
+        this.addTapeElement(colorMap[tape] || colorMap.kraft);
       });
     });
 
-    // Sticker library buttons
     document.querySelectorAll('.sticker-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const sticker = btn.dataset.sticker;
-        this.addStickerElement(sticker);
+        this.addStickerElement(btn.dataset.sticker);
       });
     });
 
-    // Polaroid frame button
-    document.getElementById('add-frame-polaroid').addEventListener('click', () => {
-      this.addPolaroidElement();
-    });
+    const dPol = document.getElementById('add-frame-polaroid');
+    if (dPol) dPol.addEventListener('click', () => this.addPolaroidElement());
 
-    // Torn paper button
-    document.getElementById('add-frame-torn').addEventListener('click', () => {
-      this.addTornPaperElement();
-    });
+    const dTorn = document.getElementById('add-frame-torn');
+    if (dTorn) dTorn.addEventListener('click', () => this.addTornPaperElement());
 
-    // Paper swatches
-    document.querySelectorAll('.paper-swatch').forEach((swatch) => {
+    document.querySelectorAll('.paper-swatch:not(.m-paper-swatch)').forEach((swatch) => {
       swatch.addEventListener('click', () => {
         document.querySelectorAll('.paper-swatch').forEach(s => s.classList.remove('active'));
         swatch.classList.add('active');
@@ -636,7 +906,7 @@ class ScrapbookEditor {
   }
 
   // ==========================================================================
-  // Adding New Scrapbook Elements
+  // Adding Elements
   // ==========================================================================
   addTextElement(text, fontFamily, fontSize, isBold = false) {
     const obj = new fabric.IText(text, {
@@ -794,7 +1064,6 @@ class ScrapbookEditor {
   saveHistoryState() {
     if (!this.isHistoryTracking || !this.canvas) return;
 
-    // Prune future states if we were in the middle of undo
     if (this.historyIndex < this.history.length - 1) {
       this.history = this.history.slice(0, this.historyIndex + 1);
     }
@@ -832,10 +1101,8 @@ class ScrapbookEditor {
     });
   }
 
-  // Sync canvas objects back to spec data structure
   syncCurrentSlideToSpec() {
     if (!this.spec || !this.spec.slides[this.currentSlideIndex]) return;
-    // In a live system, this informs the main app of modifications
     if (window.onSlideModified) {
       window.onSlideModified(this.currentSlideIndex);
     }
