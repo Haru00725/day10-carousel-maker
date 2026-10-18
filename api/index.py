@@ -1,0 +1,181 @@
+import base64
+import io
+import json
+import os
+import sys
+import zipfile
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+from PIL import Image, ImageOps
+
+# Ensure root directory is in sys.path
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+import carousel_engine as ce
+
+app = Flask(__name__)
+CORS(app)
+
+
+def decode_image_data(img_item):
+    """Decodes an image from base64 string or data URL."""
+    if isinstance(img_item, str):
+        if "," in img_item:
+            img_item = img_item.split(",", 1)[1]
+        raw_bytes = base64.b64decode(img_item)
+        im = ImageOps.exif_transpose(Image.open(io.BytesIO(raw_bytes))).convert("RGB")
+        im.thumbnail((2200, 2200))
+        return im
+    return None
+
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+    return jsonify({
+        "status": "ok",
+        "has_gemini_key": has_key,
+        "model": os.environ.get("GEMINI_MODEL", ce.DEFAULT_MODEL),
+        "families": ce.FAMILIES,
+        "presets": list(ce.PRESETS.keys())
+    })
+
+
+@app.route("/api/generate", methods=["POST"])
+def generate():
+    try:
+        data = request.get_json(force=True)
+        raw_images = data.get("images", [])
+        if not raw_images or len(raw_images) < 2:
+            return jsonify({"error": "Please provide at least 2 images"}), 400
+
+        images = []
+        for item in raw_images:
+            im = decode_image_data(item)
+            if im:
+                images.append(im)
+
+        if len(images) < 2:
+            return jsonify({"error": "Failed to decode at least 2 valid images"}), 400
+
+        hint = data.get("hint", "")
+        use_ai = data.get("use_ai", True)
+        family = data.get("family", "scrapbook")
+        mode = data.get("mode", "separate")
+        preset = data.get("preset", "Warm Cream & Espresso")
+        cover = data.get("cover", True)
+        
+        # Dimensions: default 4:5 portrait (1080x1350)
+        size_type = data.get("size", "4:5")
+        size = (1080, 1080) if size_type == "1:1" else (1080, 1350)
+
+        # Analyze vibe with Gemini (or fallback)
+        vibe, source = ce.analyze_vibe(images, hint=hint, use_ai=use_ai, family=family)
+        
+        # Build initial scrapbook specification
+        spec = ce.build_spec(images, vibe, family=family, mode=mode, size=size, seed=0, cover=cover)
+
+        # Apply preset if requested
+        if preset in ce.PRESETS:
+            ce.apply_preset(spec["theme"], preset)
+
+        return jsonify({
+            "success": True,
+            "vibe": vibe,
+            "source": source,
+            "spec": spec
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/render-slide", methods=["POST"])
+def render_slide():
+    try:
+        data = request.get_json(force=True)
+        spec = data.get("spec")
+        raw_images = data.get("images", [])
+        slide_index = int(data.get("slide_index", 0))
+
+        if not spec or not raw_images:
+            return jsonify({"error": "Spec and images are required"}), 400
+
+        images = [decode_image_data(item) for item in raw_images]
+        rendered_slide = ce.render_spec(spec, images, only=slide_index)[slide_index]
+
+        buf = io.BytesIO()
+        rendered_slide.save(buf, format="PNG")
+        b64_png = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+        return jsonify({
+            "success": True,
+            "slide_index": slide_index,
+            "image": b64_png
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/render-all", methods=["POST"])
+def render_all():
+    try:
+        data = request.get_json(force=True)
+        spec = data.get("spec")
+        raw_images = data.get("images", [])
+
+        if not spec or not raw_images:
+            return jsonify({"error": "Spec and images are required"}), 400
+
+        images = [decode_image_data(item) for item in raw_images]
+        slides = ce.render_spec(spec, images)
+
+        out_b64 = []
+        for s in slides:
+            buf = io.BytesIO()
+            s.save(buf, format="PNG")
+            out_b64.append("data:image/png;base64," + base64.b64encode(buf.getvalue()).decode())
+
+        return jsonify({
+            "success": True,
+            "slides": out_b64
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/export-zip", methods=["POST"])
+def export_zip():
+    try:
+        data = request.get_json(force=True)
+        spec = data.get("spec")
+        raw_images = data.get("images", [])
+
+        if not spec or not raw_images:
+            return jsonify({"error": "Spec and images are required"}), 400
+
+        images = [decode_image_data(item) for item in raw_images]
+        slides = ce.render_spec(spec, images)
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            for i, s in enumerate(slides, 1):
+                b = io.BytesIO()
+                s.save(b, "PNG")
+                z.writestr(f"slide_{i:02d}.png", b.getvalue())
+
+        buf.seek(0)
+        return send_file(
+            buf,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name="scrapbook_carousel.zip"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# For local execution
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5001, debug=True)

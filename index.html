@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aesthetic Scrapbook Carousel Maker — Instagram Stories & Canva-like Editor</title>
+  <meta name="description" content="Turn your photos into a stunning scrapbook aesthetic Instagram carousel with AI captions, washi tape, torn paper textures, polaroids, and an interactive canvas editor.">
+  
+  <!-- Google Fonts: Editorial Serif, Expressive Handwritten Script, Modern Sans & Monospace -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Fredoka:wght@400;500;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Fabric.js & JSZip Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="theme-warm-cream">
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand" id="nav-brand">
+        <span class="brand-icon">🎞️</span>
+        <div class="brand-text">
+          <span class="brand-title">Scrapbook Maker</span>
+          <span class="brand-tag">v2 Aesthetic</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Switcher Tabs -->
+    <nav class="view-tabs" id="view-tabs" aria-label="Workflow Steps">
+      <button class="tab-btn active" data-view="create" id="tab-create">
+        <span class="tab-icon">📷</span>
+        <span class="tab-label">1. Create</span>
+      </button>
+      <button class="tab-btn" data-view="preview" id="tab-preview" disabled>
+        <span class="tab-icon">👁️</span>
+        <span class="tab-label">2. Preview</span>
+      </button>
+      <button class="tab-btn" data-view="editor" id="tab-editor" disabled>
+        <span class="tab-icon">🎨</span>
+        <span class="tab-label">3. Visual Editor</span>
+      </button>
+    </nav>
+
+    <div class="header-right">
+      <button class="btn btn-secondary btn-sm" id="btn-load-json" title="Load a saved design (.json)">
+        📂 Load
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-save-json" title="Save this design spec (.json)" disabled>
+        💾 Save
+      </button>
+      <button class="btn btn-primary btn-sm" id="btn-export-quick" disabled>
+        ⬇️ Export ZIP
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Application Container -->
+  <main class="app-container">
+    
+    <!-- ==================== VIEW 1: CREATION STAGE ==================== -->
+    <section class="view-panel active" id="view-create">
+      <div class="create-hero">
+        <div class="scrapbook-badge">Scrapbook Aesthetic</div>
+        <h1 class="hero-title">Create Your Dream Aesthetic Carousel</h1>
+        <p class="hero-subtitle">
+          Drop your favorite photos. AI reads the vibe and crafts the story with paper textures, washi tape, polaroids, and handwritten notes.
+        </p>
+      </div>
+
+      <div class="create-layout">
+        <!-- Photo Upload & Thumbnail Stage -->
+        <div class="upload-section">
+          <div class="dropzone" id="photo-dropzone">
+            <input type="file" id="file-input" multiple accept="image/png,image/jpeg,image/webp,image/avif" class="sr-only">
+            <div class="dropzone-content">
+              <div class="dropzone-icon">📸</div>
+              <h3 class="dropzone-title">Drop your photos here, or <span class="browse-link">browse</span></h3>
+              <p class="dropzone-hint">Upload 2 to 10 photos. 4 to 6 photos create the most engaging carousel.</p>
+            </div>
+          </div>
+
+          <!-- Photo Previews Grid -->
+          <div class="photo-grid-header" id="photo-grid-header" style="display: none;">
+            <span class="photo-count" id="photo-count-label">0 photos selected</span>
+            <button class="btn-text text-danger" id="btn-clear-photos">Clear all</button>
+          </div>
+          <div class="photo-preview-grid" id="photo-preview-grid"></div>
+        </div>
+
+        <!-- Carousel Generation Controls -->
+        <div class="controls-section card">
+          <h2 class="section-title">Carousel Settings</h2>
+
+          <!-- Aspect Ratio & Dimensions -->
+          <div class="form-group">
+            <label class="form-label">Dimensions / Format</label>
+            <div class="radio-pill-group" id="size-selector">
+              <label class="radio-pill active">
+                <input type="radio" name="size" value="4:5" checked>
+                <span class="pill-content">
+                  <strong>4:5 Portrait</strong>
+                  <small>1080 × 1350 (IG Carousel)</small>
+                </span>
+              </label>
+              <label class="radio-pill">
+                <input type="radio" name="size" value="1:1">
+                <span class="pill-content">
+                  <strong>1:1 Square</strong>
+                  <small>1080 × 1080</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Layout Mode -->
+          <div class="form-group">
+            <label class="form-label">Layout Mode</label>
+            <div class="radio-pill-group" id="mode-selector">
+              <label class="radio-pill active">
+                <input type="radio" name="mode" value="separate" checked>
+                <span class="pill-content">
+                  <strong>Individual Slides</strong>
+                  <small>Polaroids & Story Cards</small>
+                </span>
+              </label>
+              <label class="radio-pill">
+                <input type="radio" name="mode" value="continuous">
+                <span class="pill-content">
+                  <strong>Continuous Swipe</strong>
+                  <small>Seamless Flowing Panorama</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Curated Scrapbook Palette -->
+          <div class="form-group">
+            <label class="form-label">Scrapbook Color Palette</label>
+            <div class="palette-grid" id="palette-selector">
+              <!-- Palette Chips injected via JS -->
+            </div>
+          </div>
+
+          <!-- Cover Slide Toggle -->
+          <div class="form-group toggle-group">
+            <div class="toggle-info">
+              <strong>Add Scrapbook Cover Slide</strong>
+              <small>Hero collage + aesthetic bold title & washi tape</small>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-cover" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- AI Story Prompt -->
+          <div class="form-group">
+            <label class="form-label" for="hint-input">What's the story or vibe? (optional)</label>
+            <input type="text" id="hint-input" class="form-input" placeholder="e.g. Weekend getaway in Kyoto, or: 5 morning habits">
+            <div class="prompt-chips">
+              <button type="button" class="chip" data-prompt="Weekend Photo Dump">☕ Weekend Dump</button>
+              <button type="button" class="chip" data-prompt="5 Lessons I Learned This Year">💡 5 Life Lessons</button>
+              <button type="button" class="chip" data-prompt="Cozy Autumn Scrapbook">🍂 Cozy Moments</button>
+              <button type="button" class="chip" data-prompt="Travel Diary & Hidden Gems">✈️ Travel Diary</button>
+            </div>
+          </div>
+
+          <!-- AI Generation Toggle -->
+          <div class="form-group toggle-group">
+            <div class="toggle-info">
+              <strong>Gemini AI Storytelling</strong>
+              <small id="ai-status-label">Reading photos & writing handwritten notes</small>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-ai" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <!-- Primary Submit Button -->
+          <button class="btn btn-primary btn-block btn-lg" id="btn-create-carousel" disabled>
+            ✨ Create Scrapbook Carousel
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: PREVIEW STAGE ==================== -->
+    <section class="view-panel" id="view-preview">
+      <div class="preview-layout">
+        <div class="preview-header">
+          <div class="preview-title-block">
+            <h2 class="preview-vibe-name" id="preview-vibe-name">Aesthetic Scrapbook</h2>
+            <div class="preview-meta">
+              <span class="badge" id="preview-family-badge">Scrapbook Aesthetic</span>
+              <span class="preview-source" id="preview-source-badge">Generated via Gemini</span>
+            </div>
+          </div>
+
+          <div class="preview-actions">
+            <button class="btn btn-outline" id="btn-goto-editor">
+              ✏️ Open in Canvas Editor
+            </button>
+            <button class="btn btn-outline" id="btn-copy-caption">
+              📋 Copy Post Caption
+            </button>
+            <button class="btn btn-primary" id="btn-download-zip">
+              ⬇️ Download All (ZIP)
+            </button>
+          </div>
+        </div>
+
+        <!-- Carousel Slide Viewer -->
+        <div class="carousel-stage-container">
+          <button class="carousel-arrow prev" id="btn-prev-slide" aria-label="Previous Slide">‹</button>
+          
+          <div class="carousel-stage" id="carousel-stage">
+            <div class="slide-card-wrapper" id="slide-card-wrapper">
+              <!-- Active rendered slide image is displayed here -->
+              <img id="active-slide-img" class="active-slide-img" alt="Current Carousel Slide">
+              <div class="slide-badge" id="slide-badge">01 / 05</div>
+            </div>
+          </div>
+
+          <button class="carousel-arrow next" id="btn-next-slide" aria-label="Next Slide">›</button>
+        </div>
+
+        <!-- Bottom Slide Filmstrip Navigation -->
+        <div class="filmstrip-bar" id="filmstrip-bar" aria-label="Carousel Slides">
+          <!-- Slide thumbnails injected via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: CANVAS VISUAL EDITOR ==================== -->
+    <section class="view-panel" id="view-editor">
+      <div class="editor-workspace">
+        
+        <!-- Left Sidebar: Slide Filmstrip & Slide Management (Desktop) -->
+        <aside class="editor-sidebar-left">
+          <div class="sidebar-header">
+            <h3>Slides</h3>
+            <button class="btn btn-icon btn-sm" id="btn-add-slide" title="Add blank scrapbook slide">➕</button>
+          </div>
+          <div class="editor-filmstrip" id="editor-filmstrip">
+            <!-- Thumbnail cards injected via JS -->
+          </div>
+          <div class="sidebar-footer">
+            <button class="btn btn-secondary btn-block btn-sm" id="btn-dup-slide">⧉ Duplicate Slide</button>
+            <button class="btn btn-outline btn-block btn-sm text-danger" id="btn-del-slide">🗑️ Delete Slide</button>
+          </div>
+        </aside>
+
+        <!-- Main Editor Center Stage -->
+        <div class="editor-center-stage">
+          
+          <!-- Contextual Floating / Fixed Toolbar -->
+          <div class="contextual-toolbar" id="contextual-toolbar">
+            
+            <!-- Global / Canvas Mode Toolbar -->
+            <div class="toolbar-group" id="tb-global">
+              <button class="tool-btn" id="btn-undo" title="Undo (Cmd+Z)">↩ Undo</button>
+              <button class="tool-btn" id="btn-redo" title="Redo (Cmd+Shift+Z)">↪ Redo</button>
+              <div class="tool-divider"></div>
+              <span class="tool-label">Canvas Zoom:</span>
+              <button class="tool-btn" id="btn-zoom-fit">Fit</button>
+              <button class="tool-btn" id="btn-zoom-in">＋</button>
+              <button class="tool-btn" id="btn-zoom-out">－</button>
+            </div>
+
+            <!-- Text Element Toolbar (Active when text is selected) -->
+            <div class="toolbar-group hidden" id="tb-text">
+              <select class="tool-select" id="tb-text-font" title="Font Family">
+                <option value="Caveat">Caveat (Handwritten)</option>
+                <option value="Playfair Display">Playfair Display (Editorial)</option>
+                <option value="Poppins">Poppins (Clean Sans)</option>
+                <option value="Space Mono">Space Mono (Retro Type)</option>
+                <option value="Fredoka">Fredoka (Rounded Bold)</option>
+                <option value="Kalam">Kalam (Casual Script)</option>
+              </select>
+
+              <input type="number" id="tb-text-size" class="tool-number" min="16" max="300" title="Font Size">
+              
+              <div class="color-picker-wrapper" title="Text Color">
+                <input type="color" id="tb-text-color" class="tool-color">
+              </div>
+
+              <button class="tool-btn" id="btn-text-bold" title="Bold"><strong>B</strong></button>
+              <button class="tool-btn" id="btn-text-italic" title="Italic"><em>I</em></button>
+              
+              <div class="tool-divider"></div>
+
+              <button class="tool-btn" id="btn-align-left" title="Align Left">⇤</button>
+              <button class="tool-btn" id="btn-align-center" title="Align Center">≡</button>
+              <button class="tool-btn" id="btn-align-right" title="Align Right">⇥</button>
+
+              <button class="tool-btn" id="btn-layer-up" title="Bring Forward">⬆</button>
+              <button class="tool-btn" id="btn-layer-down" title="Send Backward">⬇</button>
+              <button class="tool-btn text-danger" id="btn-delete-element" title="Delete Element">🗑️</button>
+            </div>
+
+            <!-- Photo / Polaroid Toolbar (Active when image/frame is selected) -->
+            <div class="toolbar-group hidden" id="tb-photo">
+              <span class="tool-label">Photo / Polaroid:</span>
+              <select class="tool-select" id="tb-photo-style" title="Frame Style">
+                <option value="polaroid">Authentic Polaroid</option>
+                <option value="minimal">Minimal White Border</option>
+                <option value="film">Film Frame</option>
+                <option value="torn">Torn Edge Cutout</option>
+              </select>
+
+              <button class="tool-btn" id="btn-photo-replace" title="Replace Photo">🔄 Change Photo</button>
+              <button class="tool-btn" id="btn-layer-up-photo" title="Bring Forward">⬆</button>
+              <button class="tool-btn" id="btn-layer-down-photo" title="Send Backward">⬇</button>
+              <button class="tool-btn text-danger" id="btn-delete-photo" title="Delete Element">🗑️</button>
+            </div>
+
+            <!-- Tape / Sticker Toolbar (Active when sticker, doodle, tape is selected) -->
+            <div class="toolbar-group hidden" id="tb-sticker">
+              <span class="tool-label">Sticker / Tape:</span>
+              <div class="color-picker-wrapper" title="Sticker Tint">
+                <input type="color" id="tb-sticker-color" class="tool-color">
+              </div>
+              <label class="tool-label">Opacity:</label>
+              <input type="range" id="tb-sticker-opacity" min="0.1" max="1" step="0.05" class="tool-range">
+              <button class="tool-btn" id="btn-layer-up-sticker" title="Bring Forward">⬆</button>
+              <button class="tool-btn" id="btn-layer-down-sticker" title="Send Backward">⬇</button>
+              <button class="tool-btn text-danger" id="btn-delete-sticker" title="Delete Element">🗑️</button>
+            </div>
+
+          </div>
+
+          <!-- Fabric.js Canvas Viewport Wrapper -->
+          <div class="canvas-viewport" id="canvas-viewport">
+            <div class="canvas-shadow-box" id="canvas-shadow-box">
+              <canvas id="scrapbook-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Mobile Quick Action Dock (Instagram Stories experience) -->
+          <div class="mobile-dock" id="mobile-dock">
+            <button class="mobile-dock-btn" data-panel="text">
+              <span class="dock-icon">🔤</span>
+              <span class="dock-label">Text</span>
+            </button>
+            <button class="mobile-dock-btn" data-panel="polaroid">
+              <span class="dock-icon">📷</span>
+              <span class="dock-label">Polaroid</span>
+            </button>
+            <button class="mobile-dock-btn" data-panel="tape">
+              <span class="dock-icon">🩹</span>
+              <span class="dock-label">Washi Tape</span>
+            </button>
+            <button class="mobile-dock-btn" data-panel="stickers">
+              <span class="dock-icon">⭐</span>
+              <span class="dock-label">Stickers</span>
+            </button>
+            <button class="mobile-dock-btn" data-panel="paper">
+              <span class="dock-icon">🎨</span>
+              <span class="dock-label">Paper</span>
+            </button>
+            <button class="mobile-dock-btn" id="btn-mobile-done">
+              <span class="dock-icon">✓</span>
+              <span class="dock-label">Done</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Right Sidebar: Add Scrapbook Elements Library (Desktop) -->
+        <aside class="editor-sidebar-right" id="editor-sidebar-right">
+          <div class="sidebar-header">
+            <h3>Add Elements</h3>
+          </div>
+
+          <div class="elements-library">
+            <!-- Text Category -->
+            <div class="library-category">
+              <div class="category-title">Typography</div>
+              <div class="library-grid-buttons">
+                <button class="lib-btn" id="add-text-title">
+                  <span class="lib-preview font-playfair">Headline</span>
+                  <span>Editorial Title</span>
+                </button>
+                <button class="lib-btn" id="add-text-hand">
+                  <span class="lib-preview font-caveat">handwritten note</span>
+                  <span>Handwritten Note</span>
+                </button>
+                <button class="lib-btn" id="add-text-body">
+                  <span class="lib-preview font-poppins">Story description</span>
+                  <span>Body Copy</span>
+                </button>
+                <button class="lib-btn" id="add-text-stamp">
+                  <span class="lib-preview font-mono">01 / OCT 24</span>
+                  <span>Date Stamp</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Washi Tape Strips -->
+            <div class="library-category">
+              <div class="category-title">Washi Tape Strips</div>
+              <div class="library-grid-buttons">
+                <button class="lib-btn tape-btn" data-tape="kraft">
+                  <div class="tape-preview tape-kraft"></div>
+                  <span>Kraft Tape</span>
+                </button>
+                <button class="lib-btn tape-btn" data-tape="sage">
+                  <div class="tape-preview tape-sage"></div>
+                  <span>Sage Tape</span>
+                </button>
+                <button class="lib-btn tape-btn" data-tape="rose">
+                  <div class="tape-preview tape-rose"></div>
+                  <span>Blush Tape</span>
+                </button>
+                <button class="lib-btn tape-btn" data-tape="gold">
+                  <div class="tape-preview tape-gold"></div>
+                  <span>Gold Stripe</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Scrapbook Stickers & Doodles -->
+            <div class="library-category">
+              <div class="category-title">Stickers & Doodles</div>
+              <div class="library-grid-buttons stickers-grid">
+                <button class="lib-btn sticker-btn" data-sticker="star-sparkle">
+                  <span class="sticker-symbol">✨</span>
+                  <span>Sparkle Star</span>
+                </button>
+                <button class="lib-btn sticker-btn" data-sticker="star-5">
+                  <span class="sticker-symbol">⭐</span>
+                  <span>5-Point Star</span>
+                </button>
+                <button class="lib-btn sticker-btn" data-sticker="arrow">
+                  <span class="sticker-symbol">↗️</span>
+                  <span>Doodled Arrow</span>
+                </button>
+                <button class="lib-btn sticker-btn" data-sticker="squiggle">
+                  <span class="sticker-symbol">〰️</span>
+                  <span>Squiggle Line</span>
+                </button>
+                <button class="lib-btn sticker-btn" data-sticker="heart">
+                  <span class="sticker-symbol">🤍</span>
+                  <span>Heart Stamp</span>
+                </button>
+                <button class="lib-btn sticker-btn" data-sticker="paperclip">
+                  <span class="sticker-symbol">📎</span>
+                  <span>Paper Clip</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Inset Polaroid & Photo Cutouts -->
+            <div class="library-category">
+              <div class="category-title">Photos & Frames</div>
+              <div class="library-grid-buttons">
+                <button class="lib-btn" id="add-frame-polaroid">
+                  <span class="frame-thumb-polaroid">📷</span>
+                  <span>Polaroid Print</span>
+                </button>
+                <button class="lib-btn" id="add-frame-torn">
+                  <span class="frame-thumb-torn">📄</span>
+                  <span>Torn Paper Band</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Background Paper Texture -->
+            <div class="library-category">
+              <div class="category-title">Paper Texture</div>
+              <div class="paper-swatch-list">
+                <button class="paper-swatch active" data-paper="cream" style="background: #f7f4ee;">Warm Cream</button>
+                <button class="paper-swatch" data-paper="kraft" style="background: #eedec5;">Kraft Paper</button>
+                <button class="paper-swatch" data-paper="linen" style="background: #f2f5f2;">Linen Sage</button>
+                <button class="paper-swatch" data-paper="blush" style="background: #fcf4f4;">Rose Paper</button>
+                <button class="paper-swatch" data-paper="midnight" style="background: #232228; color: #fff;">Midnight</button>
+              </div>
+            </div>
+
+          </div>
+        </aside>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== STAGED GENERATION MODAL ==================== -->
+  <dialog id="modal-loading" class="scrapbook-dialog">
+    <div class="dialog-content text-center">
+      <div class="animated-polaroid-spinner">
+        <div class="spinner-card card-1">📸</div>
+        <div class="spinner-card card-2">✂️</div>
+        <div class="spinner-card card-3">🩹</div>
+      </div>
+      <h3 class="loading-title" id="loading-stage-title">Reading photo vibe with Gemini...</h3>
+      <p class="loading-desc" id="loading-stage-desc">Analyzing colors, mood, and art-directing your scrapbook carousel.</p>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ==================== CAPTION MODAL ==================== -->
+  <dialog id="modal-caption" class="scrapbook-dialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h3>Instagram Caption & Hashtags</h3>
+        <button class="dialog-close" id="btn-close-caption">✕</button>
+      </div>
+      <div class="caption-box">
+        <textarea id="caption-text-area" readonly class="caption-textarea"></textarea>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-primary" id="btn-copy-caption-action">📋 Copy to Clipboard</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Load Application Scripts -->
+  <script src="/js/canvas-export.js"></script>
+  <script src="/js/editor.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
