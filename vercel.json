@@ -8,7 +8,7 @@
   ],
   "functions": {
     "api/*.py": {
-      "includeFiles": "carousel_engine.py,fonts/**"
+      "includeFiles": "index.html,css/**,js/**,fonts/**,public/**,carousel_engine.py"
     }
   }
 }

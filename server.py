@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import zipfile
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from PIL import Image, ImageOps
 
@@ -16,7 +16,7 @@ for p in [api_dir, root_dir]:
 
 import carousel_engine as ce
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
 CORS(app)
 
 
@@ -32,13 +32,62 @@ def decode_image_data(img_item):
     return None
 
 
+def find_static_file(subpath):
+    """Locates static files in root_dir, public/, or api_dir."""
+    candidates = [
+        os.path.join(root_dir, subpath),
+        os.path.join(root_dir, "public", subpath),
+        os.path.join(api_dir, subpath),
+        os.path.join(api_dir, "public", subpath),
+        os.path.join(".", subpath),
+        os.path.join("public", subpath)
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
+# ==================== STATIC ASSETS & HOMEPAGE ====================
+@app.route("/")
+@app.route("/index.html")
+def serve_index():
+    path = find_static_file("index.html")
+    if path:
+        return send_file(path, mimetype="text/html")
+    return "<h1>Scrapbook Carousel Maker</h1><p>index.html not found</p>", 200
+
+
+@app.route("/css/<path:filename>")
+def serve_css(filename):
+    path = find_static_file(os.path.join("css", filename))
+    if path:
+        return send_file(path, mimetype="text/css")
+    return "/* CSS not found */", 404
+
+
+@app.route("/js/<path:filename>")
+def serve_js(filename):
+    path = find_static_file(os.path.join("js", filename))
+    if path:
+        return send_file(path, mimetype="application/javascript")
+    return "// JS not found", 404
+
+
+@app.route("/fonts/<path:filename>")
+def serve_fonts(filename):
+    path = find_static_file(os.path.join("fonts", filename))
+    if path:
+        return send_file(path)
+    return "Font not found", 404
+
+
+# ==================== API ROUTING DISPATCHER ====================
 def get_target_endpoint():
-    # 1. From rewrite query parameter
     endpoint = request.args.get("endpoint")
     if endpoint:
         return endpoint.strip("/").lower()
     
-    # 2. From request path
     path = request.path.strip("/")
     if path.startswith("api/"):
         path = path[4:]
@@ -47,12 +96,10 @@ def get_target_endpoint():
     return path.lower()
 
 
-@app.route("/", methods=["GET", "POST", "OPTIONS"])
 @app.route("/api", methods=["GET", "POST", "OPTIONS"])
 @app.route("/api/index", methods=["GET", "POST", "OPTIONS"])
 @app.route("/api/<path:subpath>", methods=["GET", "POST", "OPTIONS"])
-@app.route("/<path:subpath>", methods=["GET", "POST", "OPTIONS"])
-def vercel_entrypoint(subpath=""):
+def vercel_api_entrypoint(subpath=""):
     if request.method == "OPTIONS":
         resp = jsonify({"status": "ok"})
         resp.headers.add("Access-Control-Allow-Origin", "*")
