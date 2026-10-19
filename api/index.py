@@ -137,8 +137,10 @@ def health_handler():
     has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
     return jsonify({
         "status": "ok",
+        "has_key": has_key,
+        "has_ai_key": has_key,
         "has_gemini_key": has_key,
-        "model": os.environ.get("GEMINI_MODEL", ce.DEFAULT_MODEL),
+        "model": "creative-ai-engine",
         "families": ce.FAMILIES,
         "presets": list(ce.PRESETS.keys())
     })
@@ -171,14 +173,15 @@ def generate_handler():
         size_type = data.get("size", "4:5")
         size = (1080, 1080) if size_type == "1:1" else (1080, 1350)
 
-        # Analyze vibe with Gemini (or fallback)
+        # Analyze vibe with AI (or fallback)
         vibe, source = ce.analyze_vibe(images, hint=hint, use_ai=use_ai, family=family)
         
         # Build initial scrapbook specification
         spec = ce.build_spec(images, vibe, family=family, mode=mode, size=size, seed=0, cover=cover)
 
-        # Apply preset if requested
-        if preset in ce.PRESETS:
+        # Apply manual preset only if user explicitly selected it from the palette chips
+        user_chose_preset = data.get("user_chose_preset", False)
+        if user_chose_preset and preset in ce.PRESETS:
             ce.apply_preset(spec["theme"], preset)
 
         return jsonify({
@@ -206,13 +209,13 @@ def render_slide_handler():
         rendered_slide = ce.render_spec(spec, images, only=slide_index)[slide_index]
 
         buf = io.BytesIO()
-        rendered_slide.save(buf, format="PNG", compress_level=1)
-        b64_png = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+        rendered_slide.save(buf, format="JPEG", quality=92)
+        b64_img = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
         return jsonify({
             "success": True,
             "slide_index": slide_index,
-            "image": b64_png
+            "image": b64_img
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -234,8 +237,8 @@ def render_all_handler():
         out_b64 = []
         for s in slides:
             buf = io.BytesIO()
-            s.save(buf, format="PNG", compress_level=1)
-            out_b64.append("data:image/png;base64," + base64.b64encode(buf.getvalue()).decode())
+            s.save(buf, format="JPEG", quality=92)
+            out_b64.append("data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode())
 
         return jsonify({
             "success": True,

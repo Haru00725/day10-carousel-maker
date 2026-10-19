@@ -50,8 +50,8 @@ SYSTEM_FONTS = ["/System/Library/Fonts/Supplemental/Georgia.ttf", "/System/Libra
 
 FAMILIES = ["scrapbook", "classic", "whimsy", "scribble"]
 STYLES = ["polaroid", "minimal", "film", "poster", "pichwai", "gold_jaali"]
-ELEMENTS = ["tape", "stars", "circles", "squiggle", "dots", "film_border"]
-DEFAULT_MODEL = "gemini-flash-latest"  # override with GEMINI_MODEL in .env
+ELEMENTS = ["tape", "stars", "circles", "squiggle", "dots", "film_border", "heart", "flower", "paperclip"]
+DEFAULT_MODEL = "gemini-3.5-flash-lite"  # override with GEMINI_MODEL in .env
 
 PRESETS = {  # title, star, note, highlight
     "Warm Cream & Espresso": ("#2c2523", "#d49b45", "#5c524b", "#d9b48f"),
@@ -170,22 +170,91 @@ def apply_preset(theme, name):
 
 
 # ============================================================ vibe: Gemini + fallback
-PROMPT = """Analyze these {n} photos for an aesthetic Instagram scrapbook carousel.
-Story / User Hint: {hint}
-If the hint or photos suggest Indian festivities, Navratri, Garba, Dandiya, or Desi aesthetics, generate festive desi captions (e.g., "chogada on repeat", "lehenga twirls", "nine nights of magic", "post-garba chai", "feeling desi").
-Otherwise generate warm, aesthetic scrapbook polaroid captions and notes.
+PROMPT = """You are an expert art director and visual designer for high-end Instagram carousels and story scrapbooks.
+Analyze these {n} photos and the user's creative brief description.
 
-Return ONLY this JSON object:
+User's Creative Brief / Description: "{hint}"
+
+CRITICAL INSTRUCTION: The user's description is your primary source of truth.
+Never force designs into a generic scrapbook style if the user requested a different aesthetic (e.g. vintage, grunge, coquette, minimalist, nature, cafe date, city life, fashion, cyber, desi festive, etc.).
+Extract the visual identity, colors, typography, density, and layout rules directly from their brief.
+
+For this generation, identify:
+1. main_theme: e.g. "city life", "cafe date", "travel", "fashion", "nature", "festive celebration", "night out", "cozy home", "art & culture", etc.
+2. aesthetic: e.g. "vintage", "girly", "coquette", "grunge", "dreamy", "minimalist", "dark academia", "y2k", "retro 90s", "desi festive", etc.
+3. mood_energy: e.g. "soft & delicate", "raw & moody", "vibrant & electric", "calm & serene", "nostalgic & warm", etc.
+4. preferred colors (palette): Complete harmonious hex colors reflecting the requested aesthetic and mood:
+   - bg1: primary background color (e.g. dark charcoal for grunge, soft blush for coquette, ivory/linen for minimalist, warm sepia for vintage, forest olive for nature)
+   - bg2: subtle gradient end background color
+   - paper: photo frame / backing card color (e.g. off-white, kraft, dark card)
+   - text: primary title text color (high contrast against bg1)
+   - note: secondary caption / annotation text color
+   - accent: doodle / star / graphic accent color
+   - tape: washi tape color
+   - band: torn paper band or banner color
+   - star: sparkle/star color
+   - hl: highlight squiggle/emphasis color
+5. typography & annotation style:
+   - title_font: "serif" (vintage/editorial), "serif_italic" (poetic/dreamy), "hand" (scrapbook/coquette), "sans" (clean/minimal), "sans_bold" (bold/modern), "mono" (grunge/tech/typewriter), "rounded" (friendly), "rounded_bold" (pop), or "chunky"
+   - body_font: "hand", "serif", "sans", "mono", or "rounded"
+   - annotation_style: "handwritten", "editorial_serif", "typewriter_mono", or "clean_sans"
+6. suitable sticker categories and decorative motifs:
+   List 3-6 motifs from: ["tape", "stars", "squiggle", "arrows", "paperclip", "hearts", "flowers", "film_strip", "dots", "highlight", "desi_sticker"]
+7. decoration density:
+   "minimal" (clean, spacious, focus on photo & type), "balanced" (tasteful tape & notes), or "heavily_decorated" (dense layering, torn bands, multiple stickers)
+8. frame_style:
+   "polaroid" (classic scrapbook), "minimal" (clean borderless/thin border), "film" (vintage 35mm film border), "poster" (bold graphic frame), "pichwai" (ornate Indian filigree), or "gold_jaali" (royal gold arch)
+9. explicit instructions:
+   - photo_placement: "center", "staggered", or "tilted"
+   - preserve_faces: boolean (true if user asks not to cover photos/faces, or if portraits are prominent)
+   - layering: "clean", "layered", or "overlapped"
+   - user_notes: string summary of any specific rules mentioned in the user brief
+
+Also write engaging, aesthetic captions for each slide, cover, and Instagram post matching the vibe.
+If Indian festive, Navratri, or Desi elements are requested, write authentic festive captions.
+
+Return ONLY one valid, compact JSON object matching this schema:
 {{
+  "creative_brief": {{
+    "main_theme": "...",
+    "aesthetic": "...",
+    "mood_energy": "...",
+    "palette": {{
+      "bg1": "#hex",
+      "bg2": "#hex",
+      "paper": "#hex",
+      "text": "#hex",
+      "note": "#hex",
+      "accent": "#hex",
+      "tape": "#hex",
+      "band": "#hex",
+      "star": "#hex",
+      "hl": "#hex"
+    }},
+    "typography": {{
+      "title_font": "hand|serif|serif_italic|sans|sans_bold|mono|rounded|rounded_bold|chunky",
+      "body_font": "hand|serif|sans|mono|rounded",
+      "annotation_style": "handwritten|editorial_serif|typewriter_mono|clean_sans"
+    }},
+    "motifs": ["tape", "stars", "..."],
+    "decoration_density": "minimal|balanced|heavily_decorated",
+    "frame_style": "polaroid|minimal|film|poster|pichwai|gold_jaali",
+    "explicit_instructions": {{
+      "photo_placement": "center|staggered|tilted",
+      "preserve_faces": true,
+      "layering": "clean|layered|overlapped",
+      "user_notes": "..."
+    }}
+  }},
   "vibe_name": "2-4 words title",
   "mood_word": "one word",
-  "tone": "light or dark",
+  "tone": "light|dark",
   "slides": [
-    {{"title": "1-4 words polaroid caption", "subtitle": "6-12 words note", "label": "1-2 words"}}
+    {{"title": "1-5 words caption", "subtitle": "6-14 words story note", "label": "1-2 words"}}
   ],
-  "cover": {{"line1": "short word", "line2": "second word", "kicker": "2-4 words", "sub1": "3-6 words", "sub2": "3-6 words"}},
-  "poster": {{"headline": "headline", "kicker": "kicker", "location": "location", "datetime": "datetime", "notes": ["note 1", "note 2", "note 3", "note 4"]}},
-  "post_caption": "Instagram caption with emojis",
+  "cover": {{"line1": "word", "line2": "word", "kicker": "2-4 words", "sub1": "3-6 words", "sub2": "3-6 words"}},
+  "poster": {{"headline": "headline", "kicker": "kicker", "location": "location", "datetime": "datetime", "notes": ["n1", "n2", "n3", "n4"]}},
+  "post_caption": "Instagram caption with relevant emojis",
   "hashtags": ["tag1", "tag2", "tag3"]
 }}"""
 
@@ -217,26 +286,261 @@ NAVRATRI_SUBS = [
 ]
 
 
+def heuristic_creative_brief(hint="", colors=None, tone="light"):
+    h = (hint or "").lower()
+    
+    # 1. Main Theme
+    if any(w in h for w in ["navratri", "garba", "dandiya", "desi", "chogada"]):
+        theme = "festive celebration"
+    elif any(w in h for w in ["cafe", "coffee", "latte", "bakery", "cappuccino", "brunch", "date"]):
+        theme = "cafe date"
+    elif any(w in h for w in ["city", "tokyo", "nyc", "urban", "metro", "street", "night out"]):
+        theme = "city life"
+    elif any(w in h for w in ["travel", "vacation", "trip", "roadtrip", "beach", "summer", "island"]):
+        theme = "travel"
+    elif any(w in h for w in ["fashion", "outfit", "fit", "style", "editorial", "lookbook"]):
+        theme = "fashion"
+    elif any(w in h for w in ["nature", "hiking", "greenery", "mountain", "forest", "botanical", "lake"]):
+        theme = "nature"
+    else:
+        theme = "lifestyle memories"
+        
+    # 2. Aesthetic
+    if any(w in h for w in ["navratri", "garba", "dandiya", "desi"]):
+        aes = "desi festive"
+    elif any(w in h for w in ["coquette", "bow", "pink", "doll", "ballet"]):
+        aes = "coquette"
+    elif any(w in h for w in ["grunge", "dark", "punk", "moody", "goth", "underground", "cyber"]):
+        aes = "grunge"
+    elif any(w in h for w in ["minimal", "minimalist", "clean", "simple", "neutral", "modern"]):
+        aes = "minimalist"
+    elif any(w in h for w in ["vintage", "retro", "90s", "sepia", "antique", "film", "classic"]):
+        aes = "vintage"
+    elif any(w in h for w in ["dreamy", "ethereal", "fantasy", "fairy", "cloud", "golden hour"]):
+        aes = "dreamy"
+    elif any(w in h for w in ["girly", "cute", "sweet", "soft"]):
+        aes = "girly"
+    else:
+        aes = "vintage" if tone == "dark" else "dreamy"
+        
+    # 3. Mood & Energy
+    mood_map = {
+        "coquette": "soft & delicate",
+        "grunge": "raw & moody",
+        "minimalist": "calm & serene",
+        "vintage": "nostalgic & warm",
+        "dreamy": "ethereal & gentle",
+        "girly": "sweet & playful",
+        "desi festive": "vibrant & electric",
+        "nature": "earthy & peaceful"
+    }
+    mood_energy = mood_map.get(aes, "balanced & warm")
+    
+    # 4. Color Palette
+    if aes == "desi festive":
+        pal = {
+            "bg1": "#580b14", "bg2": "#3e050b", "paper": "#fff8ee", "text": "#fff1d6",
+            "note": "#fedec6", "accent": "#f3b334", "tape": "#d49b45", "band": "#38060c",
+            "star": "#f3b334", "hl": "#e24358"
+        }
+    elif aes == "grunge":
+        pal = {
+            "bg1": "#18181b", "bg2": "#0f0f11", "paper": "#27272a", "text": "#f4f4f5",
+            "note": "#a1a1aa", "accent": "#dc2626", "tape": "#3f3f46", "band": "#27272a",
+            "star": "#e4e4e7", "hl": "#ef4444"
+        }
+    elif aes == "coquette":
+        pal = {
+            "bg1": "#fdf6f7", "bg2": "#f7e8ec", "paper": "#ffffff", "text": "#4a3237",
+            "note": "#8a616a", "accent": "#d8829d", "tape": "#f3c2cf", "band": "#fae4eb",
+            "star": "#d8829d", "hl": "#eeb4c3"
+        }
+    elif aes == "minimalist":
+        pal = {
+            "bg1": "#f7f6f2", "bg2": "#ece9e1", "paper": "#ffffff", "text": "#1f2421",
+            "note": "#555b57", "accent": "#2c3531", "tape": "#dedbd2", "band": "#e9e7df",
+            "star": "#8e9089", "hl": "#b0b2a8"
+        }
+    elif aes == "nature":
+        pal = {
+            "bg1": "#f2f5f1", "bg2": "#e2eade", "paper": "#ffffff", "text": "#1c2b1e",
+            "note": "#465e49", "accent": "#497151", "tape": "#c6d8c4", "band": "#d8e4d6",
+            "star": "#6a9372", "hl": "#92b298"
+        }
+    elif aes == "girly":
+        pal = {
+            "bg1": "#fdf7f4", "bg2": "#f8ebe3", "paper": "#ffffff", "text": "#3d2b27",
+            "note": "#7a5952", "accent": "#f28e82", "tape": "#f7c7be", "band": "#fae3dc",
+            "star": "#f28e82", "hl": "#fbc4bc"
+        }
+    elif aes == "vintage":
+        pal = {
+            "bg1": "#f4efe6", "bg2": "#e8dfce", "paper": "#fffcf4", "text": "#2f2519",
+            "note": "#5c4a38", "accent": "#a35d33", "tape": "#d4c2a5", "band": "#dfd3be",
+            "star": "#c28b58", "hl": "#d8b28a"
+        }
+    else:
+        pal = {
+            "bg1": "#faf8f2", "bg2": "#f0ebe1", "paper": "#ffffff", "text": "#2c2523",
+            "note": "#5c524b", "accent": "#d49b45", "tape": "#e8d3b9", "band": "#ede6d8",
+            "star": "#d49b45", "hl": "#d9b48f"
+        }
+        
+    # 5. Typography
+    if aes == "grunge":
+        typo = {"title_font": "mono", "body_font": "mono", "annotation_style": "typewriter_mono"}
+    elif aes == "coquette":
+        typo = {"title_font": "serif_italic", "body_font": "hand", "annotation_style": "handwritten"}
+    elif aes == "minimalist":
+        typo = {"title_font": "sans_bold", "body_font": "sans", "annotation_style": "clean_sans"}
+    elif aes == "desi festive":
+        typo = {"title_font": "hand", "body_font": "hand", "annotation_style": "handwritten"}
+    elif aes == "vintage":
+        typo = {"title_font": "serif", "body_font": "hand", "annotation_style": "handwritten"}
+    else:
+        typo = {"title_font": "rounded_bold", "body_font": "rounded", "annotation_style": "clean_sans"}
+        
+    # 6. Motifs
+    if aes == "desi festive":
+        motifs = ["desi_sticker", "stars", "tape"]
+    elif aes == "coquette":
+        motifs = ["hearts", "tape", "flowers", "stars"]
+    elif aes == "grunge":
+        motifs = ["tape", "film_strip", "dots", "highlight"]
+    elif aes == "minimalist":
+        motifs = ["tape", "stars"]
+    elif aes == "nature":
+        motifs = ["flowers", "tape", "stars"]
+    else:
+        motifs = ["tape", "stars", "squiggle"]
+        
+    # 7. Decoration Density
+    if any(w in h for w in ["minimal", "clean", "simple", "spacious", "uncluttered", "few stickers"]):
+        density = "minimal"
+    elif any(w in h for w in ["heavy", "dense", "junk journal", "lots of stickers", "maximalist"]):
+        density = "heavily_decorated"
+    else:
+        density = "balanced"
+        
+    # 8. Frame Style
+    if aes == "desi festive":
+        frame_style = "pichwai"
+    elif aes == "grunge":
+        frame_style = "film"
+    elif aes == "minimalist":
+        frame_style = "minimal"
+    elif aes == "fashion":
+        frame_style = "poster"
+    else:
+        frame_style = "polaroid"
+        
+    # 9. Explicit Instructions
+    preserve_faces = any(w in h for w in ["face", "faces", "portrait", "dont cover", "don't cover", "focus on photo", "photos remain the focus"])
+    if "center" in h:
+        photo_placement = "center"
+    elif "stagger" in h:
+        photo_placement = "staggered"
+    else:
+        photo_placement = "center" if density == "minimal" else "tilted"
+        
+    layering = "clean" if (density == "minimal" or "clean" in h) else ("overlapped" if "overlap" in h else "layered")
+    
+    return {
+        "main_theme": theme,
+        "aesthetic": aes,
+        "mood_energy": mood_energy,
+        "palette": pal,
+        "typography": typo,
+        "motifs": motifs,
+        "decoration_density": density,
+        "frame_style": frame_style,
+        "explicit_instructions": {
+            "photo_placement": photo_placement,
+            "preserve_faces": preserve_faces,
+            "layering": layering,
+            "user_notes": hint[:120] if hint else "aesthetic carousel design"
+        }
+    }
+
+
 def heuristic_vibe(images, n, family="scrapbook", hint=""):
-    is_nav = any(w in hint.lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
+    is_nav = any(w in (hint or "").lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
     colors = extract_palette(images)
     av = sum(max(c) for c in colors) / len(colors) / 255
     sa = sum(sat(c) for c in colors) / len(colors)
-    if is_nav:
-        v = dict(vibe_name="Navratri Garba Nights", mood_word="festive", tone="dark", style="pichwai", font="hand", elements=["tape", "stars", "squiggle"])
-    elif av < 0.40:
-        v = dict(vibe_name="Moody Film", mood_word="nocturne", tone="dark", style="polaroid", font="mono", elements=["tape", "stars", "dots"])
-    elif sa > 0.55:
-        v = dict(vibe_name="Bold Pop", mood_word="electric", tone="light", style="polaroid", font="sans", elements=["stars", "circles", "squiggle"])
-    else:
-        v = dict(vibe_name="Soft Scrapbook", mood_word="daydream", tone="light", style="polaroid", font="hand", elements=["tape", "stars", "squiggle"])
-    v["family"] = "scrapbook"
+    tone = "dark" if (is_nav or av < 0.40) else "light"
+    
+    brief = heuristic_creative_brief(hint, colors, tone)
+    
+    v = {
+        "creative_brief": brief,
+        "vibe_name": f"{brief['aesthetic'].title()} {brief['main_theme'].title()}",
+        "mood_word": brief["mood_energy"].split()[0],
+        "tone": tone,
+        "family": "scrapbook",
+        "style": brief["frame_style"],
+        "font": brief["typography"]["body_font"],
+        "elements": brief["motifs"]
+    }
     return clean_vibe(v, n, hint)
 
 
 def clean_vibe(raw, n, hint=""):
-    is_nav = any(w in hint.lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
-    tone = raw.get("tone") if raw.get("tone") in ("light", "dark") else ("dark" if is_nav else "light")
+    is_nav = any(w in (hint or "").lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
+    
+    # Extract or construct creative brief
+    raw_brief = raw.get("creative_brief")
+    fallback_brief = heuristic_creative_brief(hint, tone=raw.get("tone") or ("dark" if is_nav else "light"))
+    
+    if isinstance(raw_brief, dict):
+        brief = {
+            "main_theme": str(raw_brief.get("main_theme") or fallback_brief["main_theme"])[:40],
+            "aesthetic": str(raw_brief.get("aesthetic") or fallback_brief["aesthetic"])[:40],
+            "mood_energy": str(raw_brief.get("mood_energy") or fallback_brief["mood_energy"])[:40],
+            "palette": {},
+            "typography": {},
+            "motifs": [],
+            "decoration_density": raw_brief.get("decoration_density") if raw_brief.get("decoration_density") in ("minimal", "balanced", "heavily_decorated") else fallback_brief["decoration_density"],
+            "frame_style": raw_brief.get("frame_style") if raw_brief.get("frame_style") in STYLES else fallback_brief["frame_style"],
+            "explicit_instructions": {}
+        }
+        
+        # Validate palette
+        raw_pal = raw_brief.get("palette") if isinstance(raw_brief.get("palette"), dict) else {}
+        fb_pal = fallback_brief["palette"]
+        for col_key in ["bg1", "bg2", "paper", "text", "note", "accent", "tape", "band", "star", "hl"]:
+            val = str(raw_pal.get(col_key) or fb_pal.get(col_key, "#ffffff")).strip()
+            if not val.startswith("#") or len(val) not in (4, 7):
+                val = fb_pal.get(col_key, "#ffffff")
+            brief["palette"][col_key] = val
+            
+        # Validate typography
+        raw_typo = raw_brief.get("typography") if isinstance(raw_brief.get("typography"), dict) else {}
+        fb_typo = fallback_brief["typography"]
+        tf = str(raw_typo.get("title_font") or fb_typo["title_font"]).strip()
+        brief["typography"]["title_font"] = tf if tf in FONT_SPECS else "serif"
+        bf = str(raw_typo.get("body_font") or fb_typo["body_font"]).strip()
+        brief["typography"]["body_font"] = bf if bf in FONT_SPECS else "hand"
+        brief["typography"]["annotation_style"] = str(raw_typo.get("annotation_style") or fb_typo["annotation_style"])[:30]
+        
+        # Validate motifs
+        raw_motifs = raw_brief.get("motifs") or []
+        valid_motifs = ["tape", "stars", "squiggle", "arrows", "paperclip", "hearts", "flowers", "film_strip", "dots", "highlight", "desi_sticker"]
+        brief["motifs"] = [m for m in raw_motifs if m in valid_motifs] or fallback_brief["motifs"]
+        
+        # Explicit instructions
+        raw_exp = raw_brief.get("explicit_instructions") if isinstance(raw_brief.get("explicit_instructions"), dict) else {}
+        fb_exp = fallback_brief["explicit_instructions"]
+        brief["explicit_instructions"] = {
+            "photo_placement": raw_exp.get("photo_placement") if raw_exp.get("photo_placement") in ("center", "staggered", "tilted") else fb_exp["photo_placement"],
+            "preserve_faces": bool(raw_exp.get("preserve_faces", fb_exp["preserve_faces"])),
+            "layering": raw_exp.get("layering") if raw_exp.get("layering") in ("clean", "layered", "overlapped") else fb_exp["layering"],
+            "user_notes": str(raw_exp.get("user_notes") or fb_exp["user_notes"])[:120]
+        }
+    else:
+        brief = fallback_brief
+        
+    tone = raw.get("tone") if raw.get("tone") in ("light", "dark") else ("dark" if (is_nav or brief["aesthetic"] == "grunge") else "light")
     raw_slides = [s for s in (raw.get("slides") or []) if isinstance(s, dict)]
     slides = []
     for i in range(n):
@@ -257,15 +561,16 @@ def clean_vibe(raw, n, hint=""):
     else:
         notes = (notes + ["your note", "add a detail", "something fun", "see you there"])[:4]
     word = str(raw.get("mood_word") or ("festive" if is_nav else "memories")).strip().split()[0][:16]
-    default_name = "Navratri Garba Nights" if is_nav else "Aesthetic Scrapbook"
+    default_name = "Navratri Garba Nights" if is_nav else f"{brief['aesthetic'].title()} Aesthetic"
     return {
+        "creative_brief": brief,
         "vibe_name": str(raw.get("vibe_name") or default_name)[:40],
         "mood_word": word,
         "tone": tone,
         "family": "scrapbook",
-        "style": "pichwai" if is_nav else "polaroid",
-        "font": "hand",
-        "elements": ["tape", "stars", "squiggle"],
+        "style": brief["frame_style"],
+        "font": brief["typography"]["body_font"],
+        "elements": brief["motifs"],
         "slides": slides,
         "cover": {
             "line1": str(c.get("line1") or ("NAVRATRI-" if is_nav else word[:max(3, len(word) // 2)] + "-"))[:14],
@@ -275,10 +580,10 @@ def clean_vibe(raw, n, hint=""):
             "sub2": str(c.get("sub2") or "swipe to twirl")[:40]
         },
         "poster": {
-            "headline": str(p.get("headline") or (hint[:24] if hint else "NAVRATRI 2024"))[:30],
-            "kicker": str(p.get("kicker") or "garba nights & glowing lights")[:36],
-            "location": str(p.get("location") or "garba ground")[:40],
-            "datetime": str(p.get("datetime") or "nine nights")[:40],
+            "headline": str(p.get("headline") or (hint[:24] if hint else "AESTHETIC CAROUSEL"))[:30],
+            "kicker": str(p.get("kicker") or ("garba nights & glowing lights" if is_nav else f"{n} visual moments"))[:36],
+            "location": str(p.get("location") or ("garba ground" if is_nav else "here & now"))[:40],
+            "datetime": str(p.get("datetime") or ("nine nights" if is_nav else "captured in time"))[:40],
             "notes": notes
         },
         "post_caption": str(raw.get("post_caption") or ("nine nights of pure magic, garba beats & lehenga twirls ✨💃🪘" if is_nav else "")).strip(),
@@ -289,12 +594,18 @@ def clean_vibe(raw, n, hint=""):
 def analyze_with_gemini(images, hint="", family="scrapbook", api_key=None, model=None):
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key:
-        raise RuntimeError("no Gemini key (set GEMINI_API_KEY in .env)")
-    candidate_models = [model or os.environ.get("GEMINI_MODEL", DEFAULT_MODEL), "gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash"]
+        raise RuntimeError("no AI API key (set GEMINI_API_KEY in .env)")
+    candidate_models = [
+        model or os.environ.get("GEMINI_MODEL", DEFAULT_MODEL),
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+        "gemini-flash-latest",
+        "gemini-3.8-flash"
+    ]
     seen = set()
     models = [m for m in candidate_models if m and not (m in seen or seen.add(m))]
     
-    parts = [{"text": PROMPT.format(n=len(images), hint=hint or "none")}]
+    parts = [{"text": PROMPT.format(n=len(images), hint=hint or "aesthetic moments")}]
     for im in images:
         small = im.convert("RGB")
         # 384x384 downsampling reduces vision token usage by 75% and uploads 10x faster!
@@ -314,7 +625,7 @@ def analyze_with_gemini(images, hint="", family="scrapbook", api_key=None, model
                     "generationConfig": {
                         "responseMimeType": "application/json",
                         "temperature": 0.7,
-                        "maxOutputTokens": 600
+                        "maxOutputTokens": 1500
                     }
                 },
                 timeout=45
@@ -330,7 +641,7 @@ def analyze_with_gemini(images, hint="", family="scrapbook", api_key=None, model
         except Exception as ex:
             last_err = str(ex)
 
-    raise RuntimeError(f"Gemini API error: {last_err}")
+    raise RuntimeError(f"AI API error: {last_err}")
 
 
 def analyze_vibe(images, hint="", use_ai=True, family="auto"):
@@ -341,9 +652,9 @@ def analyze_vibe(images, hint="", use_ai=True, family="auto"):
             v = clean_vibe(analyze_with_gemini(images, hint, family), n, hint)
             if family in FAMILIES:
                 v["family"] = family
-            return v, "Gemini"
+            return v, "AI"
         except Exception as e:
-            return heuristic_vibe(images, n, family, hint), f"colour-based fallback ({e})"
+            return heuristic_vibe(images, n, family, hint), "colour-based fallback"
     return heuristic_vibe(images, n, family, hint), "colour-based (AI off)"
 
 
@@ -417,6 +728,52 @@ def sparkle(size, color, alpha=255):
                 c + (R if k % 2 == 0 else R * 0.2) * math.sin(math.pi / 4 * k - math.pi / 2)) for k in range(8)]
         d.polygon(pts, fill=(*color, alpha))
     return aa_layer(size, size, fn)
+
+
+def heart(size, color, alpha=255):
+    def fn(d, s):
+        w = size * s
+        scale = w / 36.0
+        cx, cy = w / 2, w / 2 + 2 * s
+        pts = []
+        for deg in range(0, 360, 4):
+            t = math.radians(deg)
+            x = cx + 16 * (math.sin(t) ** 3) * scale
+            y = cy - (13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)) * scale
+            pts.append((x, y))
+        d.polygon(pts, fill=(*color, alpha))
+    return aa_layer(size, size, fn)
+
+
+def flower(size, color, alpha=255, petals=5):
+    def fn(d, s):
+        cx, cy = size * s / 2, size * s / 2
+        r_center = size * s * 0.16
+        r_petal = size * s * 0.22
+        dist = size * s * 0.26
+        for i in range(petals):
+            ang = i * (2 * math.pi / petals)
+            px = cx + dist * math.cos(ang)
+            py = cy + dist * math.sin(ang)
+            d.ellipse([px - r_petal, py - r_petal, px + r_petal, py + r_petal], fill=(*color, alpha))
+        d.ellipse([cx - r_center, cy - r_center, cx + r_center, cy + r_center], fill=(255, 248, 220, alpha))
+    return aa_layer(size, size, fn)
+
+
+def paperclip(w, h, color, alpha=230):
+    def fn(d, s):
+        thick = max(2, int(w * s * 0.12))
+        pad = thick + 2 * s
+        pts = [
+            (pad, h * s - pad),
+            (pad, pad * 2),
+            (w * s - pad, pad * 2),
+            (w * s - pad, h * s - pad),
+            (w * s / 2, h * s - pad),
+            (w * s / 2, pad * 3)
+        ]
+        d.line(pts, fill=(*color, alpha), width=thick, joint="curve")
+    return aa_layer(w, h, fn)
 
 
 def ring(size, color, width=7, alpha=230, filled=False):
@@ -612,7 +969,13 @@ FRAME_DIMS = {
 
 
 def make_frame(photo, style, theme, caption, font_kind):
-    t = {k: resolve_color(v, theme) for k, v in theme.items() if isinstance(v, str) and v.startswith("#")}
+    t = {k: resolve_color(v, theme) for k, v in theme.items() if k in ("paper", "text", "accent", "second", "star", "note", "hl", "title")}
+    if "paper" not in t:
+        t["paper"] = (255, 255, 255)
+    if "text" not in t:
+        t["text"] = (40, 40, 40)
+    if "accent" not in t:
+        t["accent"] = (212, 155, 69)
     if style == "polaroid":
         pw, ph, side, top, bottom = 600, 760, 30, 30, 130
         body = Image.new("RGBA", (pw + 2 * side, ph + top + bottom), (*t["paper"], 255))
@@ -1128,6 +1491,12 @@ def draw_element(canvas, el, ox, W, H, theme, images, seed):
     elif t == "star":
         fn = star5 if el.get("shape", "star5") == "star5" else sparkle
         put(canvas, fn(int(el.get("size", 60)), col), X, Y, rot, base=col)
+    elif t == "heart":
+        put(canvas, heart(int(el.get("size", 60)), col), X, Y, rot, base=col)
+    elif t == "flower":
+        put(canvas, flower(int(el.get("size", 70)), col, petals=int(el.get("petals", 5))), X, Y, rot, base=col)
+    elif t == "paperclip":
+        put(canvas, paperclip(int(el.get("w", 42)), int(el.get("h", 90)), col), X, Y, rot, base=col)
     elif t == "inset":
         label_color = resolve_color(el.get("color", "theme:note"), theme)
         put(canvas, make_inset(images[int(el.get("photo", 0)) % nimg], int(el.get("w", 190)), str(el.get("label", "")), label_color, theme),
@@ -1444,7 +1813,8 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     rng = random.Random(seed)
     cont = mode == "continuous"
     
-    is_nav = any(w in str(vibe).lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "pichwai", "festive"]) or vibe.get("style") == "pichwai"
+    brief = vibe.get("creative_brief") or {}
+    is_nav = any(w in str(vibe).lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "pichwai", "festive"]) or vibe.get("style") == "pichwai" or brief.get("aesthetic") == "desi festive"
     
     if is_nav:
         theme = {
@@ -1464,8 +1834,29 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             "title_font": "hand",
             "body_font": "hand"
         }
+    elif brief.get("palette"):
+        pal = brief["palette"]
+        typo = brief.get("typography", {})
+        paper_val = pal.get("paper", "#ffffff")
+        paper_tuple = hex_to_rgb(paper_val) if isinstance(paper_val, str) and paper_val.startswith("#") else (255, 255, 255)
+        theme = {
+            "title": pal.get("text", "#2c2523"),
+            "star": pal.get("star", pal.get("accent", "#d49b45")),
+            "hl": pal.get("hl", pal.get("accent", "#d9b48f")),
+            "note": pal.get("note", "#5c524b"),
+            "band": pal.get("band", "#ede6d8"),
+            "tape": pal.get("tape", "#e8d3b9"),
+            "bg1": pal.get("bg1", "#f8f5ee"),
+            "bg2": pal.get("bg2", "#f0ebe1"),
+            "paper": paper_tuple,
+            "accent": pal.get("accent", "#d49b45"),
+            "second": pal.get("accent", "#e24358"),
+            "text": pal.get("text", "#2c2523"),
+            "tone": vibe.get("tone", "light"),
+            "title_font": typo.get("title_font", "serif"),
+            "body_font": typo.get("body_font", "hand")
+        }
     else:
-        # Curated Scrapbook Palette
         theme = make_theme(extract_palette(images), vibe.get("tone", "light"), "Warm Cream & Espresso")
         theme.update({
             "title": "#2c2523",
@@ -1478,6 +1869,13 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             "bg2": "#f0ebe1"
         })
     
+    density = brief.get("decoration_density", "balanced")
+    motifs = brief.get("motifs", ["tape", "stars", "squiggle"])
+    frame_style = brief.get("frame_style") or ("pichwai" if is_nav else "polaroid")
+    exp = brief.get("explicit_instructions", {})
+    preserve_faces = exp.get("preserve_faces", False)
+    photo_placement = exp.get("photo_placement", "tilted")
+    
     total_slides = (n + 1) if (cover and not cont) else n
     spec = new_spec(size, mode, theme, grain=True, family="scrapbook", n=total_slides)
     spec["global"].update(counter=True, swipe=True)
@@ -1487,34 +1885,25 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     if cover and not cont:
         slide_offset = 1
         if is_nav:
-            # Recreate the stunning Navratri Desi reference layout with real assets!
+            # Authentic Navratri Desi reference layout with real assets
             cov_els = [
-                # Top & Bottom Pichwai Lotus Borders
                 E("lotus_border", h=125, x=0.5, y=0.04, z=1),
                 E("lotus_border", h=125, x=0.5, y=0.96, z=1),
-                # "Feeling Desi" torn parchment badge
                 E("desi_badge", w=330, h=150, x=0.82, y=0.15, rotate=2, z=2),
-                # Wicker Basket with Gajra & Bangles
                 E("desi_sticker", kind="basket_gajra", size=240, x=0.78, y=0.32, rotate=4, z=2),
-                # Lotus Jhumkas & Embroidered Juttis
                 E("desi_sticker", kind="jhumka", size=180, x=0.76, y=0.48, rotate=6, z=2),
                 E("desi_sticker", kind="mojri", size=240, x=0.72, y=0.62, rotate=-12, z=2),
-                # Pichwai Photo Frame 1 (top-left)
                 E("frame", photo=0, style="pichwai", caption="garba night", font="hand", x=0.31, y=0.35, rotate=-1, z=1),
-                # Instagram / Spotify Music Player card
                 E("music_player", title="Chogada", artist="Darshan Raval, Asees Kaur", current="1:48", total="4:11", w=480, h=140, x=0.31, y=0.66, rotate=0, z=2),
-                # Bottom stickers: Mehndi Chai & Auto Rickshaw
                 E("desi_sticker", kind="mehndi_chai", size=170, x=0.33, y=0.83, rotate=4, z=2),
                 E("desi_sticker", kind="rickshaw", size=155, x=0.12, y=0.84, rotate=-4, z=2),
-                # Pichwai Photo Frame 2 (bottom-right)
                 E("frame", photo=(1 if n > 1 else 0), style="pichwai", caption="chogada vibe", font="hand", x=0.76, y=0.78, rotate=1, z=1),
-                # Golden sparkles
                 E("star", shape="sparkle4", size=48, x=0.56, y=0.16, rotate=12, color="theme:star", z=2),
                 E("star", shape="sparkle4", size=36, x=0.56, y=0.88, rotate=-8, color="theme:star", z=2),
             ]
-            sl[0].update(bg={"mode": "gradient", "bg1": "#580b14", "bg2": "#3e050b"}, elements=cov_els)
+            sl[0].update(bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]}, elements=cov_els)
         else:
-            headline = vibe.get("poster", {}).get("headline") or vibe.get("vibe_name") or "SCRAPBOOK MEMORIES"
+            headline = vibe.get("poster", {}).get("headline") or vibe.get("vibe_name") or "AESTHETIC STORY"
             kicker = vibe.get("poster", {}).get("kicker") or f"{n} visual moments"
             sub = vibe.get("cover", {}).get("sub1") or "flip through the story"
             
@@ -1522,36 +1911,63 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             l1 = " ".join(words[:max(1, len(words)//2)])
             l2 = " ".join(words[max(1, len(words)//2):]) if len(words) > 1 else ""
             
-            s1 = fit_size(l1, "serif", 0.82 * W, 0, 70, 150)
+            title_f = theme.get("title_font", "serif")
+            body_f = theme.get("body_font", "hand")
+            s1 = fit_size(l1, title_f, 0.82 * W, 0, 65, 145)
             
-            cov_els = [
-                E("torn", y=0.58, h=int(0.35 * H), color="theme:band", jag=16, z=0),
-                E("tape", w=240, h=60, x=0.25, y=0.08, rotate=-8, color="theme:tape", alpha=220, z=2),
-                E("tape", w=220, h=56, x=0.76, y=0.09, rotate=6, color="theme:tape", alpha=220, z=2),
-                E("frame", photo=0, style="polaroid", caption=vibe.get("slides", [{}])[0].get("title", "moment 01"),
-                  font="hand", x=0.5, y=0.38, rotate=-2.5, z=1),
-                E("text", text=kicker.upper(), font="sans_bold", size=32, color="theme:star", tracking=4, x=0.5, y=0.62, shadow=False),
-                E("text", text=l1, font="serif", size=s1, color="theme:title", x=0.5, y=0.70, shadow=False),
-            ]
+            cov_rot = 0.0 if (preserve_faces or density == "minimal") else -2.5
+            cov_els = []
+            
+            # Layered torn paper band (for balanced & heavily_decorated)
+            if density == "heavily_decorated":
+                cov_els.append(E("torn", y=0.58, h=int(0.35 * H), color="theme:band", jag=16, z=0))
+            
+            # Washi tape strips on cover
+            if "tape" in motifs and density != "minimal":
+                cov_els.append(E("tape", w=240, h=60, x=0.25, y=0.08, rotate=-8, color="theme:tape", alpha=220, z=2))
+                cov_els.append(E("tape", w=220, h=56, x=0.76, y=0.09, rotate=6, color="theme:tape", alpha=220, z=2))
+            
+            # Main cover frame
+            cov_els.append(
+                E("frame", photo=0, style=frame_style, caption=vibe.get("slides", [{}])[0].get("title", "moment 01"),
+                  font=body_f, x=0.5, y=0.38, rotate=cov_rot, z=1)
+            )
+            
+            # Typography block
+            cov_els.append(E("text", text=kicker.upper(), font="sans_bold", size=30, color="theme:star", tracking=4, x=0.5, y=0.62, shadow=False))
+            cov_els.append(E("text", text=l1, font=title_f, size=s1, color="theme:title", x=0.5, y=0.70, shadow=False))
             if l2:
-                s2 = fit_size(l2, "serif", 0.78 * W, 0, 60, 140)
-                cov_els.append(E("text", text=l2, font="serif", size=s2, color="theme:title", x=0.5, y=0.77, shadow=False))
+                s2 = fit_size(l2, title_f, 0.78 * W, 0, 55, 135)
+                cov_els.append(E("text", text=l2, font=title_f, size=s2, color="theme:title", x=0.5, y=0.77, shadow=False))
             
             cov_els.extend([
-                E("text", text=sub, font="hand", size=54, color="theme:note", x=0.48, y=0.86, rotate=-1, shadow=False),
+                E("text", text=sub, font=body_f, size=52, color="theme:note", x=0.48, y=0.86, rotate=-1 if density != "minimal" else 0, shadow=False),
                 E("arrow", x=0.72, y=0.86, x2=0.86, y2=0.88, bend=35, width=6, color="theme:note", z=2),
-                E("text", text="swipe →", font="hand", size=44, color="theme:note", x=0.84, y=0.92, rotate=4, z=2),
-                E("star", shape="sparkle4", size=52, x=0.15, y=0.65, rotate=-12, color="theme:star", z=2),
-                E("star", shape="sparkle4", size=38, x=0.88, y=0.68, rotate=15, color="theme:star", z=2),
+                E("text", text="swipe →", font=body_f, size=42, color="theme:note", x=0.84, y=0.92, rotate=4 if density != "minimal" else 0, z=2),
             ])
-            sl[0].update(bg={"mode": "gradient", "bg1": "#f9f6ee", "bg2": "#efe9dc"}, elements=cov_els)
+            
+            # Cover decorative motifs based on creative brief
+            if density != "minimal":
+                if "hearts" in motifs:
+                    cov_els.append(E("heart", size=54, x=0.15, y=0.65, rotate=-12, color="theme:accent", z=2))
+                    cov_els.append(E("heart", size=40, x=0.88, y=0.68, rotate=15, color="theme:accent", z=2))
+                elif "flowers" in motifs:
+                    cov_els.append(E("flower", size=60, x=0.14, y=0.65, rotate=10, color="theme:star", z=2))
+                    cov_els.append(E("flower", size=46, x=0.87, y=0.67, rotate=-12, color="theme:star", z=2))
+                elif "stars" in motifs:
+                    cov_els.append(E("star", shape="sparkle4", size=52, x=0.15, y=0.65, rotate=-12, color="theme:star", z=2))
+                    cov_els.append(E("star", shape="sparkle4", size=38, x=0.88, y=0.68, rotate=15, color="theme:star", z=2))
+                
+                if "paperclip" in motifs:
+                    cov_els.append(E("paperclip", w=38, h=88, x=0.22, y=0.17, rotate=12, color="theme:star", z=2))
+            
+            sl[0].update(bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]}, elements=cov_els)
 
     # In continuous mode, add subtle panoramic backdrop text
     if cont:
         mood_word = ("NAVRATRI" if is_nav else vibe.get("mood_word", "MEMORIES")).upper()
-        # Ambient background text on slide 0 that subtly flows across the whole panorama
         sl[0]["elements"].append(
-            E("text", text=mood_word, font="serif_italic" if not is_nav else "hand", size=180, color="theme:title",
+            E("text", text=mood_word, font=theme.get("title_font", "serif_italic"), size=180, color="theme:title",
               opacity=0.07, x=n * 0.45, y=0.20, shadow=False, z=0)
         )
 
@@ -1564,21 +1980,26 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         subtitle = v_slide.get("subtitle") or (NAVRATRI_SUBS[idx % len(NAVRATRI_SUBS)] if is_nav else "A special memory captured in time")
         label = v_slide.get("label") or "detail"
         
-        frame_style = "pichwai" if is_nav else "polaroid"
-        
-        if cont:
-            # Stagger frames dynamically across slides for an authentic scrapbook panorama
+        # Determine photo placement & rotation according to explicit instructions & density
+        if preserve_faces or photo_placement == "center":
+            cx, cy = 0.5, 0.44
+            rot_val = 0.0
+        elif photo_placement == "staggered":
+            cx = 0.46 if idx % 2 == 0 else 0.54
+            cy = 0.43 if idx % 2 == 0 else 0.45
+            rot_val = round((-1.5 if idx % 2 == 0 else 1.5), 1)
+        elif cont:
             if idx % 3 == 0:
                 cx, cy = 0.48, 0.44
-                rot = -2.8 + rng.uniform(-0.8, 0.8)
+                rot_val = round(-2.5 + rng.uniform(-0.6, 0.6), 1)
             elif idx % 3 == 1:
                 cx, cy = 0.54, 0.42
-                rot = 3.2 + rng.uniform(-0.8, 0.8)
+                rot_val = round(2.8 + rng.uniform(-0.6, 0.6), 1)
             else:
                 cx, cy = 0.46, 0.45
-                rot = -1.6 + rng.uniform(-0.8, 0.8)
+                rot_val = round(-1.4 + rng.uniform(-0.6, 0.6), 1)
         else:
-            rot = (-3.0 if idx % 2 == 0 else 3.0) + rng.uniform(-1.0, 1.0)
+            rot_val = round(((-2.8 if idx % 2 == 0 else 2.8) + rng.uniform(-0.8, 0.8)), 1)
             cy = 0.44 + (0.02 if idx % 2 == 0 else -0.02)
             cx = 0.5
         
@@ -1586,8 +2007,8 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             slide_els = [
                 E("lotus_border", h=125, x=0.5, y=0.04, z=1),
                 E("lotus_border", h=125, x=0.5, y=0.96, z=1),
-                E("frame", photo=idx, style=frame_style, caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
-                E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
+                E("frame", photo=idx, style=frame_style, caption=title, font="hand", x=cx, y=cy, rotate=rot_val, z=1),
+                E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot_val + rng.uniform(-6, 6), 1),
                   color="theme:tape", alpha=230, z=2),
                 E("text", text=subtitle, font="hand", size=52, color="theme:note", max_w=0.82, x=cx, y=0.86,
                   rotate=round(rng.uniform(-2, 2), 1), shadow=True, line_gap=1.05),
@@ -1597,7 +2018,6 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                   y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
             ]
             
-            # Rich natural desi stickers with real flowers, dandiya, gajra, and music
             desi_stickers_pool = [
                 [("marigold_garland", 0.5, 0.16, 0), ("jhumka", 0.84, 0.26, 8), ("mojri", 0.15, 0.74, -12)],
                 [("jasmine_gajra", 0.84, 0.22, -6), ("dandiya", 0.16, 0.76, 20), ("mehndi_chai", 0.85, 0.72, 6)],
@@ -1610,41 +2030,76 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 slide_els.append(E("desi_sticker", kind=kind, size=sz, x=sx, y=sy, rotate=srot, z=2))
                 
             sl[target_idx].update(
-                bg={"mode": "gradient", "bg1": "#580b14", "bg2": "#3e050b"},
+                bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]},
                 elements=slide_els
             )
         else:
-            slide_els = [
-                E("torn", y=0.76, h=int(0.24 * H), color="theme:band", jag=14, z=0),
-                E("frame", photo=idx, style="polaroid", caption=title, font="hand", x=cx, y=cy, rotate=round(rot, 1), z=1),
-                E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot + rng.uniform(-6, 6), 1),
-                  color="theme:tape", alpha=230, z=2),
-                E("text", text=subtitle, font="hand", size=54, color="theme:note", max_w=0.80, x=cx, y=0.86,
-                  rotate=round(rng.uniform(-2, 2), 1), shadow=False, line_gap=1.05),
-                E("star", shape="sparkle4", size=rng.randint(42, 68), x=0.14 if idx % 2 == 0 else 0.86,
-                  y=0.18 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
-                E("star", shape="sparkle4", size=rng.randint(28, 44), x=0.88 if idx % 2 == 0 else 0.12,
-                  y=0.72 + rng.uniform(-0.04, 0.04), rotate=rng.randint(-15, 15), color="theme:star", z=2),
-            ]
+            slide_els = []
             
-            if not cont:
-                if n > 1 and idx % 2 == 1:
-                    inset_ph = (idx + 1) % n
-                    slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
-                    slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
-                elif idx % 2 == 0:
-                    slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=2))
+            # 1. Background torn paper band: only when heavily decorated
+            if density == "heavily_decorated":
+                slide_els.append(E("torn", y=0.76, h=int(0.24 * H), color="theme:band", jag=14, z=0))
+            
+            # 2. Main photo frame
+            body_f = theme.get("body_font", "hand")
+            slide_els.append(
+                E("frame", photo=idx, style=frame_style, caption=title, font=body_f, x=cx, y=cy, rotate=rot_val, z=1)
+            )
+            
+            # 3. Washi tape (if "tape" in motifs and not minimal with preserve_faces)
+            if "tape" in motifs and density != "minimal":
+                tape_y = cy - 0.31 if preserve_faces else cy - 0.28
+                slide_els.append(
+                    E("tape", w=220, h=54, x=cx + rng.uniform(-0.03, 0.03), y=tape_y,
+                      rotate=round(rot_val + rng.uniform(-5, 5), 1), color="theme:tape", alpha=225, z=2)
+                )
+            
+            # 4. Story annotation text
+            note_rot = round(rng.uniform(-1.5, 1.5), 1) if density != "minimal" else 0
+            slide_els.append(
+                E("text", text=subtitle, font=body_f, size=52, color="theme:note", max_w=0.82, x=cx, y=0.86,
+                  rotate=note_rot, shadow=False, line_gap=1.05)
+            )
+            
+            # 5. Decorative motifs based on brief
+            if density != "minimal":
+                p_left = (0.14 if idx % 2 == 0 else 0.86, 0.18 + rng.uniform(-0.03, 0.03))
+                p_right = (0.88 if idx % 2 == 0 else 0.12, 0.72 + rng.uniform(-0.03, 0.03))
+                
+                if "hearts" in motifs:
+                    slide_els.append(E("heart", size=rng.randint(48, 66), x=p_left[0], y=p_left[1],
+                                       rotate=rng.randint(-18, 18), color="theme:accent", z=2))
+                elif "flowers" in motifs:
+                    slide_els.append(E("flower", size=rng.randint(55, 75), x=p_left[0], y=p_left[1],
+                                       rotate=rng.randint(-25, 25), color="theme:star", z=2))
+                elif "stars" in motifs:
+                    slide_els.append(E("star", shape="sparkle4", size=rng.randint(42, 68), x=p_left[0], y=p_left[1],
+                                       rotate=rng.randint(-15, 15), color="theme:star", z=2))
+                
+                if "flowers" in motifs and "hearts" in motifs:
+                    slide_els.append(E("flower", size=rng.randint(45, 62), x=p_right[0], y=p_right[1],
+                                       rotate=rng.randint(-20, 20), color="theme:star", z=2))
+                elif "stars" in motifs:
+                    slide_els.append(E("star", shape="sparkle4", size=rng.randint(28, 44), x=p_right[0], y=p_right[1],
+                                       rotate=rng.randint(-15, 15), color="theme:star", z=2))
+                
+                if not cont:
+                    if density == "heavily_decorated" and n > 1 and idx % 2 == 1 and not preserve_faces:
+                        inset_ph = (idx + 1) % n
+                        slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
+                        slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
+                    elif "squiggle" in motifs and idx % 2 == 0:
+                        slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=5, wavelength=65, thick=5, color="theme:hl", z=2))
                 
             sl[target_idx].update(
-                bg={"mode": "gradient", "bg1": "#faf8f2", "bg2": "#f1ebe0"},
+                bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]},
                 elements=slide_els
             )
 
-    # In continuous mode, add cross-seam scrapbook bridge elements connecting every pair of slides!
+    # In continuous mode, add cross-seam scrapbook bridge elements connecting every pair of slides
     if cont:
         for b in range(1, n):
             prev_idx = b - 1
-            # 1. Washi tape strip crossing directly over the seam (x=1.0)
             tape_y = 0.22 if b % 2 == 1 else 0.70
             tape_rot = rng.uniform(-10, 10)
             sl[prev_idx]["elements"].append(
@@ -1652,44 +2107,53 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                   color="theme:tape", alpha=235, z=2)
             )
             
-            # 2. Sparkle star doodle bridging the cut
-            sl[prev_idx]["elements"].append(
-                E("star", shape="sparkle4", size=rng.randint(52, 78), x=1.0,
-                  y=0.48 + rng.uniform(-0.12, 0.12), rotate=rng.randint(-15, 15),
-                  color="theme:star", z=2)
-            )
+            # Bridge motif: heart, flower, or star
+            if "hearts" in motifs:
+                sl[prev_idx]["elements"].append(
+                    E("heart", size=rng.randint(52, 74), x=1.0,
+                      y=0.48 + rng.uniform(-0.10, 0.10), rotate=rng.randint(-15, 15),
+                      color="theme:accent", z=2)
+                )
+            elif "flowers" in motifs:
+                sl[prev_idx]["elements"].append(
+                    E("flower", size=rng.randint(55, 75), x=1.0,
+                      y=0.48 + rng.uniform(-0.10, 0.10), rotate=rng.randint(-20, 20),
+                      color="theme:star", z=2)
+                )
+            else:
+                sl[prev_idx]["elements"].append(
+                    E("star", shape="sparkle4", size=rng.randint(52, 78), x=1.0,
+                      y=0.48 + rng.uniform(-0.12, 0.12), rotate=rng.randint(-15, 15),
+                      color="theme:star", z=2)
+                )
             
-            # 3. Desi sticker or photo inset sitting across the seam on alternating slides
+            # Additional seam element
             if is_nav:
                 desi_seam_kinds = ["lotus", "jhumka", "dandiya", "garba"]
                 sl[prev_idx]["elements"].append(
                     E("desi_sticker", kind=desi_seam_kinds[b % len(desi_seam_kinds)], size=130, x=1.0,
                       y=0.34, rotate=round(rng.uniform(-8, 8), 1), z=2)
                 )
-            elif b % 2 == 1 and n > 1:
+            elif b % 2 == 1 and n > 1 and density == "heavily_decorated":
                 inset_ph = (b + 1) % n
                 sl[prev_idx]["elements"].append(
                     E("inset", photo=inset_ph, w=220, label="moment", x=1.0,
-                      y=0.34, rotate=round(rng.uniform(-6, 6), 1),
-                      color="theme:note", z=2)
+                      y=0.34, rotate=round(rng.uniform(-6, 6), 1), color="theme:note", z=2)
                 )
                 sl[prev_idx]["elements"].append(
                     E("tape", w=130, h=40, x=1.0, y=0.22, rotate=round(rng.uniform(-10, 10), 1),
                       color="theme:hl", alpha=210, z=3)
                 )
             else:
-                # Doodled connecting arrow across the seam with swipe cue
                 sl[prev_idx]["elements"].append(
-                    E("arrow", x=0.86, y=0.88, x2=1.14, y2=0.88, bend=28, width=6,
-                      color="theme:note", z=2)
+                    E("arrow", x=0.86, y=0.88, x2=1.14, y2=0.88, bend=28, width=6, color="theme:note", z=2)
                 )
                 sl[prev_idx]["elements"].append(
-                    E("text", text="continue →", font="hand", size=42, color="theme:note",
+                    E("text", text="continue →", font=theme.get("body_font", "hand"), size=42, color="theme:note",
                       x=0.98, y=0.93, rotate=2, shadow=False, z=2)
                 )
             
-            # 4. Squiggle wave line crossing the bottom seam (only for non-nav, nav has lotus borders)
-            if not is_nav:
+            if not is_nav and "squiggle" in motifs:
                 sl[prev_idx]["elements"].append(
                     E("squiggle", span=0.5, x=1.0, y=0.92, amp=6, wavelength=65, thick=6, color="theme:hl", z=1)
                 )

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Aesthetic Scrapbook Carousel Maker — Instagram Stories & Canva-like Editor</title>
-  <meta name="description" content="Turn your photos into a stunning scrapbook aesthetic Instagram carousel with AI captions, washi tape, torn paper textures, polaroids, and an interactive canvas editor.">
+  <title>Scrapli — Aesthetic Carousel Maker</title>
+  <meta name="description" content="Scrapli — Turn your photos into stunning aesthetic Instagram carousels with AI story direction, washi tape, torn paper textures, polaroids, and an interactive canvas editor.">
   
   <!-- Mobile & PWA meta tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,7 +23,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
   <!-- Main Stylesheet -->
-  <link rel="stylesheet" href="/css/style.css?v=2.2">
+  <link rel="stylesheet" href="/css/style.css?v=2.3">
 </head>
 <body class="theme-warm-cream">
   <!-- Top Navigation Bar -->
@@ -32,8 +32,8 @@
       <div class="brand" id="nav-brand">
         <span class="brand-icon">🎞️</span>
         <div class="brand-text">
-          <span class="brand-title">Scrapbook Maker</span>
-          <span class="brand-tag">v2 Aesthetic</span>
+          <span class="brand-title">Scrapli</span>
+          <span class="brand-tag">Aesthetic Studio</span>
         </div>
       </div>
     </div>
@@ -185,7 +185,7 @@
           <!-- AI Generation Toggle -->
           <div class="form-group toggle-group">
             <div class="toggle-info">
-              <strong>Gemini AI Storytelling</strong>
+              <strong>AI Storytelling & Art Direction</strong>
               <small id="ai-status-label">Reading photos & writing handwritten notes</small>
             </div>
             <label class="switch">
@@ -210,7 +210,7 @@
             <h2 class="preview-vibe-name" id="preview-vibe-name">Aesthetic Scrapbook</h2>
             <div class="preview-meta">
               <span class="badge" id="preview-family-badge">Scrapbook Aesthetic</span>
-              <span class="preview-source" id="preview-source-badge">Generated via Gemini</span>
+              <span class="preview-source" id="preview-source-badge">Crafted with AI</span>
             </div>
           </div>
 
@@ -826,8 +826,11 @@
         <div class="spinner-card card-2">✂️</div>
         <div class="spinner-card card-3">🩹</div>
       </div>
-      <h3 class="loading-title" id="loading-stage-title">Reading photo vibe with Gemini...</h3>
-      <p class="loading-desc" id="loading-stage-desc">Analyzing colors, mood, and art-directing your scrapbook carousel.</p>
+      <h3 class="loading-title" id="loading-stage-title">Reading photo vibe & aesthetics...</h3>
+      <p class="loading-desc" id="loading-stage-desc">Analyzing colors, mood, and art-directing your aesthetic carousel.</p>
+      <div class="loading-timer-badge" id="loading-timer-badge">
+        <span class="timer-icon">⏱️</span> Estimated time: <strong id="loading-est-time">~4s</strong> <span class="timer-elapsed" id="loading-elapsed-time">(0.0s elapsed)</span>
+      </div>
       <div class="progress-bar-container">
         <div class="progress-bar" id="progress-bar"></div>
       </div>

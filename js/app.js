@@ -8,6 +8,7 @@
     currentView: 'create', // 'create' | 'preview' | 'editor'
     images: [], // array of base64 data URLs
     selectedPalette: 'Warm Cream & Espresso',
+    paletteManuallySelected: false,
     selectedSize: '4:5',
     selectedMode: 'separate',
     includeCover: true,
@@ -80,8 +81,8 @@
       if (res.ok) {
         const data = await res.json();
         const aiLabel = document.getElementById('ai-status-label');
-        if (data.has_gemini_key) {
-          aiLabel.textContent = `Active (${data.model}) — reads photos & writes copy`;
+        if (data.has_ai_key || data.has_gemini_key || data.has_key) {
+          aiLabel.textContent = 'Active — reads photos & crafts aesthetic story';
         } else {
           aiLabel.textContent = 'No API key in .env — using color & mood heuristics';
         }
@@ -170,6 +171,7 @@
         document.querySelectorAll('.palette-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
         state.selectedPalette = p.name;
+        state.paletteManuallySelected = true;
       });
 
       container.appendChild(chip);
@@ -222,7 +224,35 @@
     });
   }
 
-  function handleFiles(fileList) {
+  function downscaleImage(file, maxDimension = 1440, quality = 0.88) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width <= maxDimension && height <= maxDimension && file.size < 700 * 1024) {
+            resolve(e.target.result);
+            return;
+          }
+          const scale = Math.min(1, maxDimension / Math.max(width, height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(width * scale);
+          canvas.height = Math.round(height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed);
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFiles(fileList) {
     const validFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
     const remainingSlots = 10 - state.images.length;
     const toLoad = validFiles.slice(0, remainingSlots);
@@ -234,18 +264,13 @@
       return;
     }
 
-    let loadedCount = 0;
-    toLoad.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        state.images.push(e.target.result);
-        loadedCount++;
-        if (loadedCount === toLoad.length) {
-          updatePhotoGrid();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    for (const file of toLoad) {
+      const compressedDataUrl = await downscaleImage(file, 1440, 0.88);
+      if (compressedDataUrl) {
+        state.images.push(compressedDataUrl);
+        updatePhotoGrid();
+      }
+    }
   }
 
   function updatePhotoGrid() {
@@ -457,23 +482,88 @@
         }
       }
     });
+    // Desktop PC Keyboard navigation (Chrome, Safari & all browsers)
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+      if (e.key === 'ArrowLeft') {
+        if (state.currentView === 'preview') {
+          const prevBtn = document.getElementById('btn-prev-slide');
+          if (prevBtn && !prevBtn.disabled) prevBtn.click();
+        } else if (state.currentView === 'editor' && state.activeSlideIndex > 0) {
+          state.activeSlideIndex--;
+          state.editor.loadSlide(state.activeSlideIndex, state.spec, state.images);
+          renderEditorFilmstrip();
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (state.currentView === 'preview') {
+          const nextBtn = document.getElementById('btn-next-slide');
+          if (nextBtn && !nextBtn.disabled) nextBtn.click();
+        } else if (state.currentView === 'editor' && state.spec && state.activeSlideIndex < state.spec.slides.length - 1) {
+          state.activeSlideIndex++;
+          state.editor.loadSlide(state.activeSlideIndex, state.spec, state.images);
+          renderEditorFilmstrip();
+        }
+      } else if (e.key === 'Escape') {
+        const modal = document.getElementById('modal-loading');
+        if (modal && modal.open) modal.close();
+      }
+    });
   }
 
   // ==========================================================================
-  // Carousel Generation with Staged Progress
+  // Carousel Generation with Dynamic Timer & Staged Progress
   // ==========================================================================
   async function generateCarousel() {
     const loadingModal = document.getElementById('modal-loading');
     const stageTitle = document.getElementById('loading-stage-title');
     const stageDesc = document.getElementById('loading-stage-desc');
     const progressBar = document.getElementById('progress-bar');
+    const estTimeEl = document.getElementById('loading-est-time');
+    const elapsedTimeEl = document.getElementById('loading-elapsed-time');
 
     loadingModal.showModal();
 
-    // Stage 1
-    progressBar.style.width = '20%';
-    stageTitle.textContent = 'Reading photo vibe with Gemini...';
+    // Initial state
+    progressBar.style.width = '12%';
+    stageTitle.textContent = 'Reading photo vibe & aesthetics...';
     stageDesc.textContent = 'Analyzing colors, lighting, and composition.';
+
+    const estDuration = state.useAi ? 3.8 : 1.2;
+    const startTime = performance.now();
+
+    // Real-time estimated timer countdown & elapsed time
+    const timerInterval = setInterval(() => {
+      const elapsed = (performance.now() - startTime) / 1000;
+      const remaining = Math.max(0, estDuration - elapsed);
+
+      if (elapsedTimeEl) {
+        elapsedTimeEl.textContent = `(${elapsed.toFixed(1)}s elapsed)`;
+      }
+
+      if (estTimeEl) {
+        if (remaining > 0.1) {
+          estTimeEl.textContent = `~${remaining.toFixed(1)}s`;
+        } else {
+          estTimeEl.textContent = 'Finishing touches...';
+        }
+      }
+
+      // Smooth progress bar calculation
+      const progressPct = Math.min(92, Math.round(15 + (elapsed / (estDuration + 1.2)) * 75));
+      progressBar.style.width = `${progressPct}%`;
+
+      // Fluid stage descriptions
+      if (elapsed >= 0.8 && elapsed < 2.0) {
+        stageTitle.textContent = 'Art-directing scrapbook story & layout...';
+        stageDesc.textContent = 'Curating color palettes, handwritten notes, and polaroids.';
+      } else if (elapsed >= 2.0 && elapsed < 3.2) {
+        stageTitle.textContent = 'Placing washi tape, torn borders & stickers...';
+        stageDesc.textContent = 'Composing authentic textures and multi-layer aesthetic details.';
+      } else if (elapsed >= 3.2) {
+        stageTitle.textContent = 'Rendering high-resolution slides...';
+        stageDesc.textContent = 'Assembling final aesthetic carousel canvas.';
+      }
+    }, 100);
 
     const payload = {
       images: state.images,
@@ -482,23 +572,10 @@
       size: state.selectedSize,
       mode: state.selectedMode,
       preset: state.selectedPalette,
+      user_chose_preset: Boolean(state.paletteManuallySelected),
       cover: state.includeCover,
       use_ai: state.useAi
     };
-
-    // Stage 2
-    setTimeout(() => {
-      progressBar.style.width = '55%';
-      stageTitle.textContent = 'Art-directing scrapbook story & handwritten notes...';
-      stageDesc.textContent = 'Designing heartfelt polaroid captions and annotations.';
-    }, 900);
-
-    // Stage 3
-    setTimeout(() => {
-      progressBar.style.width = '80%';
-      stageTitle.textContent = 'Placing washi tape, torn paper & polaroids...';
-      stageDesc.textContent = 'Assembling realistic aesthetic layers.';
-    }, 2200);
 
     let data = null;
     try {
@@ -529,8 +606,16 @@
     state.source = data.source;
     state.activeSlideIndex = 0;
 
+    // Render all slides (tries server rendering, falls back to client canvas)
+    await renderAllSlidesViaApi();
+
+    // Complete timer and progress bar
+    clearInterval(timerInterval);
+    const finalElapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+    if (elapsedTimeEl) elapsedTimeEl.textContent = `(Ready in ${finalElapsed}s)`;
+    if (estTimeEl) estTimeEl.textContent = 'Done!';
     progressBar.style.width = '100%';
-    stageTitle.textContent = 'Finalizing your scrapbook carousel!';
+    stageTitle.textContent = 'Your aesthetic carousel is ready!';
 
     // Enable navigation tabs & actions
     tabs.preview.disabled = false;
@@ -538,11 +623,10 @@
     document.getElementById('btn-save-json').disabled = false;
     document.getElementById('btn-export-quick').disabled = false;
 
-    // Render all slides (tries server rendering, falls back to client canvas)
-    await renderAllSlidesViaApi();
-
-    loadingModal.close();
-    switchView('preview');
+    setTimeout(() => {
+      loadingModal.close();
+      switchView('preview');
+    }, 320);
   }
 
   function generateClientSideScrapbook(options) {
@@ -581,7 +665,15 @@
     };
 
     const isNav = preset === 'Royal Crimson & Pichwai' || /navratri|garba|dandiya|desi|chogada|pichwai/i.test(hint || '');
-    const activePreset = isNav ? 'Royal Crimson & Pichwai' : preset;
+    let activePreset = preset;
+    if (isNav) {
+      activePreset = 'Royal Crimson & Pichwai';
+    } else if (!state.paletteManuallySelected && hint) {
+      if (/coquette|pink|girly|doll|rose|blush/i.test(hint)) activePreset = 'Vintage Rose';
+      else if (/grunge|dark|night|punk|moody|goth/i.test(hint)) activePreset = 'Midnight Journal';
+      else if (/nature|hiking|botanical|green|forest/i.test(hint)) activePreset = 'Sage & Botanical';
+      else if (/terracotta|clay|autumn|warm|cafe/i.test(hint)) activePreset = 'Terracotta & Clay';
+    }
     const theme = paletteMap[activePreset] || paletteMap['Warm Cream & Espresso'];
     const storyHeadline = hint ? hint.toUpperCase() : (isNav ? 'NAVRATRI DUMP' : 'SWEET MEMORIES');
     const slides = [];
@@ -876,7 +968,7 @@
     const sourceEl = document.getElementById('preview-source-badge');
 
     vibeNameEl.textContent = state.vibe ? state.vibe.vibe_name : 'Aesthetic Scrapbook';
-    sourceEl.textContent = state.source ? `Generated via ${state.source}` : 'Aesthetic Scrapbook';
+    sourceEl.textContent = state.source ? (state.source.toLowerCase().includes('gemini') ? 'Crafted with AI' : `Generated via ${state.source}`) : 'Scrapli Studio';
 
     const currentImg = state.renderedSlides[state.activeSlideIndex];
     if (currentImg) {
