@@ -1,0 +1,1347 @@
+[
+  {
+    "id": "city-yellow-cab",
+    "name": "Vintage Yellow Taxi",
+    "path": "/assets/stickers/city_life/yellow_cab.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "taxi",
+      "cab",
+      "transport",
+      "new york",
+      "urban",
+      "street",
+      "yellow"
+    ],
+    "color_palette": [
+      "#FCCC22",
+      "#1E1E1E",
+      "#FFFFFF"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "bottom_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 380,
+    "height": 240,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "city-buildings",
+    "name": "Skyline Buildings",
+    "path": "/assets/stickers/city_life/buildings.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "skyline",
+      "buildings",
+      "architecture",
+      "urban",
+      "downtown",
+      "metropolis"
+    ],
+    "color_palette": [
+      "#2D343C",
+      "#FFE8AA",
+      "#C36E55"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "bottom_backdrop",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_center",
+        "seam_crossing"
+      ],
+      "default_scale": 1.0,
+      "z_index": 1
+    },
+    "width": 360,
+    "height": 360,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "city-street-sign",
+    "name": "Broadway & 5th Ave Sign",
+    "path": "/assets/stickers/city_life/street_sign.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "street",
+      "sign",
+      "broadway",
+      "avenue",
+      "corner",
+      "urban",
+      "new york"
+    ],
+    "color_palette": [
+      "#186238",
+      "#FFFFFF",
+      "#464B50"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "top_corner_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "top_right"
+      ],
+      "default_scale": 0.8,
+      "z_index": 2
+    },
+    "width": 360,
+    "height": 260,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "city-subway-map",
+    "name": "Metro Transit Map",
+    "path": "/assets/stickers/city_life/subway_map.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "subway",
+      "metro",
+      "map",
+      "transit",
+      "train",
+      "underground"
+    ],
+    "color_palette": [
+      "#FAF6EE",
+      "#EE3524",
+      "#0078D2"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "polaroid_backing",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "center_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.9,
+      "z_index": 1
+    },
+    "width": 340,
+    "height": 340,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "city-traffic-light",
+    "name": "Street Traffic Light",
+    "path": "/assets/stickers/city_life/traffic_light.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "traffic",
+      "light",
+      "signals",
+      "crosswalk",
+      "urban",
+      "stop"
+    ],
+    "color_palette": [
+      "#23262A",
+      "#F5372D",
+      "#28D26E"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "side_column_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_right",
+        "top_left"
+      ],
+      "default_scale": 0.75,
+      "z_index": 2
+    },
+    "width": 200,
+    "height": 380,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "city-transit-ticket",
+    "name": "Vintage Transit Ticket",
+    "path": "/assets/stickers/city_life/transit_ticket.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "ticket",
+      "transit",
+      "bus",
+      "pass",
+      "vintage",
+      "fare"
+    ],
+    "color_palette": [
+      "#FCF4E4",
+      "#CD4137",
+      "#2D2D2D"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "polaroid_clip",
+    "suitable_placement": {
+      "layer_type": "stamp",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_center"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 360,
+    "height": 180,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "city-rickshaw",
+    "name": "Iconic Auto Rickshaw",
+    "path": "/assets/navratri/rickshaw.png",
+    "category": "city_life",
+    "theme_tags": [
+      "city",
+      "rickshaw",
+      "auto",
+      "transport",
+      "street",
+      "urban",
+      "desi"
+    ],
+    "color_palette": [
+      "#1A6538",
+      "#F5B418",
+      "#1E1E1E"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "bottom_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.8,
+      "z_index": 2
+    },
+    "width": 320,
+    "height": 260,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "travel-vintage-camera",
+    "name": "Vintage 35mm Camera",
+    "path": "/assets/stickers/travel/vintage_camera.png",
+    "category": "travel",
+    "theme_tags": [
+      "travel",
+      "camera",
+      "photo",
+      "polaroid",
+      "35mm",
+      "vintage",
+      "memories",
+      "lens"
+    ],
+    "color_palette": [
+      "#232428",
+      "#D7DCE2",
+      "#E63C32"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "hero_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 360,
+    "height": 280,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "travel-airmail-postcard",
+    "name": "Airmail Postcard",
+    "path": "/assets/stickers/travel/airmail_postcard.png",
+    "category": "travel",
+    "theme_tags": [
+      "travel",
+      "postcard",
+      "airmail",
+      "letter",
+      "stamp",
+      "postage",
+      "wanderlust"
+    ],
+    "color_palette": [
+      "#FCF8F0",
+      "#E13732",
+      "#2D5FB9"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_backing",
+    "suitable_placement": {
+      "layer_type": "frame",
+      "suggested_positions": [
+        "center_left",
+        "center_right"
+      ],
+      "default_scale": 0.9,
+      "z_index": 1
+    },
+    "width": 360,
+    "height": 250,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "travel-leather-suitcase",
+    "name": "Vintage Leather Trunk",
+    "path": "/assets/stickers/travel/leather_suitcase.png",
+    "category": "travel",
+    "theme_tags": [
+      "travel",
+      "suitcase",
+      "luggage",
+      "leather",
+      "trunk",
+      "vacation",
+      "trip"
+    ],
+    "color_palette": [
+      "#C37841",
+      "#73411E",
+      "#EBBE50"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "bottom_corner",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 360,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "travel-passport-stamp",
+    "name": "Entry Visa Stamp",
+    "path": "/assets/stickers/travel/passport_stamp.png",
+    "category": "travel",
+    "theme_tags": [
+      "travel",
+      "passport",
+      "stamp",
+      "customs",
+      "admitted",
+      "airport",
+      "visa"
+    ],
+    "color_palette": [
+      "#284BA5"
+    ],
+    "visual_style": "stamp",
+    "recommended_use": "polaroid_corner",
+    "suitable_placement": {
+      "layer_type": "stamp",
+      "suggested_positions": [
+        "top_right",
+        "bottom_left"
+      ],
+      "default_scale": 0.75,
+      "z_index": 3
+    },
+    "width": 300,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "travel-location-pin",
+    "name": "Red Map Location Pin",
+    "path": "/assets/stickers/travel/location_pin.png",
+    "category": "travel",
+    "theme_tags": [
+      "travel",
+      "pin",
+      "location",
+      "map",
+      "destination",
+      "marker",
+      "gps"
+    ],
+    "color_palette": [
+      "#EB372D",
+      "#FFFFFF"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "caption_companion",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_right",
+        "center_right"
+      ],
+      "default_scale": 0.65,
+      "z_index": 3
+    },
+    "width": 200,
+    "height": 280,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "cafe-latte-art",
+    "name": "Heart Latte Art Cup",
+    "path": "/assets/stickers/cafe_food/latte_art.png",
+    "category": "cafe_food",
+    "theme_tags": [
+      "cafe",
+      "coffee",
+      "latte",
+      "espresso",
+      "morning",
+      "heart",
+      "cozy",
+      "drink"
+    ],
+    "color_palette": [
+      "#A0643C",
+      "#DC9B82",
+      "#FCF6EE"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "polaroid_side_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_right",
+        "top_left"
+      ],
+      "default_scale": 0.8,
+      "z_index": 2
+    },
+    "width": 320,
+    "height": 320,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "cafe-croissant",
+    "name": "Golden Butter Croissant",
+    "path": "/assets/stickers/cafe_food/croissant.png",
+    "category": "cafe_food",
+    "theme_tags": [
+      "cafe",
+      "croissant",
+      "pastry",
+      "bakery",
+      "breakfast",
+      "french",
+      "food"
+    ],
+    "color_palette": [
+      "#EBAA46",
+      "#C37323"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "bottom_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_center"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 360,
+    "height": 260,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "cafe-cherries",
+    "name": "Glossy Fresh Cherries",
+    "path": "/assets/stickers/cafe_food/cherries.png",
+    "category": "cafe_food",
+    "theme_tags": [
+      "cafe",
+      "cherries",
+      "fruit",
+      "summer",
+      "sweet",
+      "red",
+      "berry"
+    ],
+    "color_palette": [
+      "#C3142D",
+      "#559137"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "corner_sparkle",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_right",
+        "bottom_right"
+      ],
+      "default_scale": 0.75,
+      "z_index": 2
+    },
+    "width": 300,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "cafe-matcha",
+    "name": "Iced Matcha Latte",
+    "path": "/assets/stickers/cafe_food/matcha_latte.png",
+    "category": "cafe_food",
+    "theme_tags": [
+      "cafe",
+      "matcha",
+      "iced latte",
+      "green tea",
+      "drink",
+      "refreshing",
+      "cafe date"
+    ],
+    "color_palette": [
+      "#73A550",
+      "#FCFAF5"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "side_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_right",
+        "top_right"
+      ],
+      "default_scale": 0.75,
+      "z_index": 2
+    },
+    "width": 240,
+    "height": 360,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "cafe-cutting-chai",
+    "name": "Cutting Masala Chai",
+    "path": "/assets/navratri/chai_hand.png",
+    "category": "cafe_food",
+    "theme_tags": [
+      "cafe",
+      "chai",
+      "tea",
+      "cutting chai",
+      "mehendi",
+      "cozy",
+      "comfort"
+    ],
+    "color_palette": [
+      "#C88750",
+      "#7B3E20",
+      "#FAF0E6"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "polaroid_companion",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "center_left"
+      ],
+      "default_scale": 0.8,
+      "z_index": 2
+    },
+    "width": 280,
+    "height": 320,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "coquette-pink-bow",
+    "name": "Silky Pink Coquette Bow",
+    "path": "/assets/stickers/girly_coquette/pink_bow.png",
+    "category": "girly_coquette",
+    "theme_tags": [
+      "coquette",
+      "bow",
+      "pink",
+      "ribbon",
+      "girly",
+      "cute",
+      "balletcore",
+      "aesthetic"
+    ],
+    "color_palette": [
+      "#FFB9C8",
+      "#EB91A5",
+      "#FFFFFF"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "polaroid_top_clip",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_center",
+        "top_left",
+        "top_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 3
+    },
+    "width": 360,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "coquette-gingham-tape",
+    "name": "Pink Gingham Washi Tape",
+    "path": "/assets/stickers/girly_coquette/gingham_tape.png",
+    "category": "girly_coquette",
+    "theme_tags": [
+      "coquette",
+      "tape",
+      "gingham",
+      "washi",
+      "plaid",
+      "pink",
+      "checkered"
+    ],
+    "color_palette": [
+      "#FFEBF0",
+      "#FFAFC3"
+    ],
+    "visual_style": "tape",
+    "recommended_use": "polaroid_tape_strip",
+    "suitable_placement": {
+      "layer_type": "tape",
+      "suggested_positions": [
+        "top_left",
+        "top_right",
+        "bottom_center"
+      ],
+      "default_scale": 0.9,
+      "z_index": 3
+    },
+    "width": 380,
+    "height": 160,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "coquette-heart-locket",
+    "name": "Vintage Gold Heart Locket",
+    "path": "/assets/stickers/girly_coquette/heart_locket.png",
+    "category": "girly_coquette",
+    "theme_tags": [
+      "coquette",
+      "heart",
+      "locket",
+      "gold",
+      "jewelry",
+      "romantic",
+      "love",
+      "vintage"
+    ],
+    "color_palette": [
+      "#EBB94B",
+      "#C38C2D"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "accent_pendant",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.75,
+      "z_index": 2
+    },
+    "width": 280,
+    "height": 280,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "coquette-sparkle-heart",
+    "name": "Sparkle Candy Heart",
+    "path": "/assets/stickers/girly_coquette/sparkle_heart.png",
+    "category": "girly_coquette",
+    "theme_tags": [
+      "coquette",
+      "heart",
+      "sparkle",
+      "stars",
+      "glitter",
+      "girly",
+      "crush"
+    ],
+    "color_palette": [
+      "#FF8CAF",
+      "#FFEB78"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "corner_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_right",
+        "bottom_left"
+      ],
+      "default_scale": 0.7,
+      "z_index": 2
+    },
+    "width": 280,
+    "height": 280,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "nature-monarch-butterfly",
+    "name": "Monarch Butterfly",
+    "path": "/assets/stickers/nature/monarch_butterfly.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "butterfly",
+      "monarch",
+      "wings",
+      "botanical",
+      "spring",
+      "insects"
+    ],
+    "color_palette": [
+      "#F5781E",
+      "#19191E",
+      "#FFFFFF"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "polaroid_corner_perch",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "top_right"
+      ],
+      "default_scale": 0.8,
+      "z_index": 3
+    },
+    "width": 360,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "nature-white-daisy",
+    "name": "Fresh White Daisy",
+    "path": "/assets/stickers/nature/white_daisy.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "daisy",
+      "flower",
+      "bloom",
+      "floral",
+      "spring",
+      "botanical",
+      "white"
+    ],
+    "color_palette": [
+      "#FFFFFF",
+      "#FFC31E"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_corner_floral",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.75,
+      "z_index": 2
+    },
+    "width": 300,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "nature-ginkgo-leaf",
+    "name": "Golden Ginkgo Leaf",
+    "path": "/assets/stickers/nature/ginkgo_leaf.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "ginkgo",
+      "leaf",
+      "autumn",
+      "botanical",
+      "gold",
+      "fall"
+    ],
+    "color_palette": [
+      "#EBB432",
+      "#B48228"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "botanical_corner",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "bottom_left"
+      ],
+      "default_scale": 0.8,
+      "z_index": 2
+    },
+    "width": 300,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "nature-pink-lotus",
+    "name": "Sacred Indian Pink Lotus",
+    "path": "/assets/navratri/pink_lotus.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "lotus",
+      "pink lotus",
+      "flower",
+      "sacred",
+      "blossom",
+      "botanical"
+    ],
+    "color_palette": [
+      "#FF82A0",
+      "#D2285A",
+      "#FAF0F0"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "corner_bloom",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_right",
+        "top_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 320,
+    "height": 320,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "nature-marigold-flower",
+    "name": "Fresh Marigold Bloom",
+    "path": "/assets/navratri/marigold_flower.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "marigold",
+      "genda",
+      "flower",
+      "orange",
+      "festive",
+      "botanical"
+    ],
+    "color_palette": [
+      "#F5821E",
+      "#FFB41E"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "photo_corner",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "bottom_left"
+      ],
+      "default_scale": 0.8,
+      "z_index": 2
+    },
+    "width": 300,
+    "height": 300,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "nature-marigold-garland",
+    "name": "Marigold Floral Garland",
+    "path": "/assets/navratri/marigold_garland.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "garland",
+      "marigold",
+      "floral border",
+      "toran",
+      "flowers"
+    ],
+    "color_palette": [
+      "#F5821E",
+      "#E65A14",
+      "#F5D232"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "top_hanging_border",
+    "suitable_placement": {
+      "layer_type": "border",
+      "suggested_positions": [
+        "top_center",
+        "seam_crossing"
+      ],
+      "default_scale": 1.0,
+      "z_index": 2
+    },
+    "width": 420,
+    "height": 180,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "nature-jasmine-gajra",
+    "name": "Fragrant Mogra Gajra",
+    "path": "/assets/navratri/jasmine_gajra.png",
+    "category": "nature",
+    "theme_tags": [
+      "nature",
+      "jasmine",
+      "mogra",
+      "gajra",
+      "garland",
+      "white flower",
+      "fragrance"
+    ],
+    "color_palette": [
+      "#FFFFFF",
+      "#E8F0E5"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "photo_drape",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_right",
+        "bottom_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 340,
+    "height": 260,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "fashion-quilted-handbag",
+    "name": "Quilted Leather Handbag",
+    "path": "/assets/stickers/fashion/quilted_handbag.png",
+    "category": "fashion",
+    "theme_tags": [
+      "fashion",
+      "handbag",
+      "purse",
+      "quilted",
+      "leather",
+      "luxury",
+      "outfit",
+      "accessories"
+    ],
+    "color_palette": [
+      "#1E2023",
+      "#E6BE50"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "bottom_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_right",
+        "bottom_left"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 320,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "fashion-sunglasses",
+    "name": "Tortoiseshell Sunglasses",
+    "path": "/assets/stickers/fashion/sunglasses.png",
+    "category": "fashion",
+    "theme_tags": [
+      "fashion",
+      "sunglasses",
+      "shades",
+      "tortoiseshell",
+      "chic",
+      "summer",
+      "eyewear"
+    ],
+    "color_palette": [
+      "#6E3719",
+      "#232830"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_perch",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "center_right"
+      ],
+      "default_scale": 0.8,
+      "z_index": 3
+    },
+    "width": 360,
+    "height": 180,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "fashion-lipstick",
+    "name": "Classic Crimson Lipstick",
+    "path": "/assets/stickers/fashion/red_lipstick.png",
+    "category": "fashion",
+    "theme_tags": [
+      "fashion",
+      "lipstick",
+      "makeup",
+      "beauty",
+      "cosmetics",
+      "red",
+      "gold"
+    ],
+    "color_palette": [
+      "#D2192D",
+      "#EBB94B",
+      "#1C1E20"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "corner_glam",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "bottom_right"
+      ],
+      "default_scale": 0.75,
+      "z_index": 2
+    },
+    "width": 180,
+    "height": 340,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "fashion-jhumka-earrings",
+    "name": "Lotus Filigree Jhumkas",
+    "path": "/assets/navratri/lotus_jhumka_hd.png",
+    "category": "fashion",
+    "theme_tags": [
+      "fashion",
+      "jhumka",
+      "earrings",
+      "jewelry",
+      "filigree",
+      "silver",
+      "traditional"
+    ],
+    "color_palette": [
+      "#D7DCE0",
+      "#FF6B8B",
+      "#B49632"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "hanging_earring_accent",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_right",
+        "top_left"
+      ],
+      "default_scale": 0.8,
+      "z_index": 3
+    },
+    "width": 260,
+    "height": 340,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "fashion-embroidered-juttis",
+    "name": "Zardozi Royal Juttis",
+    "path": "/assets/navratri/embroidered_juttis.png",
+    "category": "fashion",
+    "theme_tags": [
+      "fashion",
+      "juttis",
+      "mojri",
+      "shoes",
+      "zardozi",
+      "gold",
+      "footwear"
+    ],
+    "color_palette": [
+      "#B41E28",
+      "#E6BE50"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "bottom_corner_shoes",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_center",
+        "bottom_right"
+      ],
+      "default_scale": 0.85,
+      "z_index": 2
+    },
+    "width": 340,
+    "height": 260,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "vintage-35mm-film",
+    "name": "35mm Negative Filmstrip",
+    "path": "/assets/stickers/vintage_grunge/film_strip.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "film",
+      "35mm",
+      "negative",
+      "sprocket",
+      "analog",
+      "camera",
+      "retro"
+    ],
+    "color_palette": [
+      "#141619",
+      "#EBB432"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_header_footer",
+    "suitable_placement": {
+      "layer_type": "frame",
+      "suggested_positions": [
+        "top_center",
+        "bottom_center",
+        "seam_crossing"
+      ],
+      "default_scale": 1.0,
+      "z_index": 2
+    },
+    "width": 360,
+    "height": 200,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "vintage-postage-stamp",
+    "name": "Engraved Postal Stamp",
+    "path": "/assets/stickers/vintage_grunge/postage_stamp.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "stamp",
+      "postage",
+      "perforated",
+      "engraving",
+      "mail",
+      "airmail"
+    ],
+    "color_palette": [
+      "#A03C46",
+      "#FAF5EB"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "polaroid_corner_stamp",
+    "suitable_placement": {
+      "layer_type": "stamp",
+      "suggested_positions": [
+        "top_right",
+        "top_left"
+      ],
+      "default_scale": 0.75,
+      "z_index": 3
+    },
+    "width": 260,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "vintage-wax-seal",
+    "name": "Crimson Wax Seal",
+    "path": "/assets/stickers/vintage_grunge/wax_seal.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "wax seal",
+      "crimson",
+      "envelope",
+      "letter",
+      "botanical crest",
+      "wax"
+    ],
+    "color_palette": [
+      "#A51923",
+      "#780F19"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_corner_clasp",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_right",
+        "top_left"
+      ],
+      "default_scale": 0.75,
+      "z_index": 3
+    },
+    "width": 260,
+    "height": 260,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "vintage-paperclip",
+    "name": "Metallic Paperclip",
+    "path": "/assets/stickers/vintage_grunge/silver_paperclip.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "paperclip",
+      "clip",
+      "office",
+      "stationery",
+      "metal",
+      "silver"
+    ],
+    "color_palette": [
+      "#C3CDD7",
+      "#6E7882"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_top_clamping",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "top_left",
+        "top_center"
+      ],
+      "default_scale": 0.65,
+      "z_index": 4
+    },
+    "width": 160,
+    "height": 300,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "vintage-cafe-receipt",
+    "name": "Torn Cafe Receipt",
+    "path": "/assets/stickers/vintage_grunge/cafe_receipt.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "receipt",
+      "barcode",
+      "thermal paper",
+      "cafe",
+      "memory",
+      "ephemera"
+    ],
+    "color_palette": [
+      "#FFFCEF",
+      "#2D2D2D"
+    ],
+    "visual_style": "cutout_sticker",
+    "recommended_use": "photo_backing_paper",
+    "suitable_placement": {
+      "layer_type": "sticker",
+      "suggested_positions": [
+        "bottom_left",
+        "center_left"
+      ],
+      "default_scale": 0.85,
+      "z_index": 1
+    },
+    "width": 260,
+    "height": 360,
+    "license": "Handcrafted Open Source"
+  },
+  {
+    "id": "vintage-gold-jaali-frame",
+    "name": "Gold Jaali Ornate Frame",
+    "path": "/assets/navratri/gold_jaali_frame.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "frame",
+      "gold",
+      "jaali",
+      "filigree",
+      "royal",
+      "antique"
+    ],
+    "color_palette": [
+      "#E6B432",
+      "#C8961E"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "photo_frame",
+    "suitable_placement": {
+      "layer_type": "frame",
+      "suggested_positions": [
+        "center"
+      ],
+      "default_scale": 1.0,
+      "z_index": 2
+    },
+    "width": 400,
+    "height": 480,
+    "license": "Curated Open Asset"
+  },
+  {
+    "id": "vintage-pichwai-frame",
+    "name": "Pichwai Filigree Frame",
+    "path": "/assets/navratri/pichwai_filigree_frame.png",
+    "category": "vintage_grunge",
+    "theme_tags": [
+      "vintage",
+      "frame",
+      "pichwai",
+      "lotus",
+      "traditional",
+      "ornate"
+    ],
+    "color_palette": [
+      "#961E28",
+      "#E6B432"
+    ],
+    "visual_style": "photorealistic",
+    "recommended_use": "photo_frame",
+    "suitable_placement": {
+      "layer_type": "frame",
+      "suggested_positions": [
+        "center"
+      ],
+      "default_scale": 1.0,
+      "z_index": 2
+    },
+    "width": 400,
+    "height": 480,
+    "license": "Curated Open Asset"
+  }
+]

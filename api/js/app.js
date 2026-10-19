@@ -20,6 +20,7 @@
     renderedSlides: [], // array of base64 PNG data URLs
     editor: null,
   };
+  window.state = state;
 
   const PALETTES = [
     {
@@ -73,6 +74,7 @@
 
     // Initialize Fabric Editor instance
     state.editor = new ScrapbookEditor('scrapbook-canvas');
+    window.editor = state.editor;
   }
 
   async function checkApiHealth() {
@@ -107,6 +109,24 @@
       renderPreviewSlide();
       renderFilmstrip();
     } else if (viewName === 'editor') {
+      if (!state.spec) {
+        state.spec = {
+          title: "My Scrapbook Carousel",
+          mode: "standard",
+          size: [1080, 1350],
+          theme: { bg: '#f7f4ee', accent: '#b85042', note: '#2c2523', paper: 'cream' },
+          slides: [
+            {
+              bg: '#f7f4ee',
+              elements: [
+                { type: 'text', text: 'SCRAPBOOK STUDIO', font: 'Playfair Display', size: 68, x: 0.5, y: 0.22, bold: true },
+                { type: 'text', text: 'drag stickers, add notes & photos ✨', font: 'Caveat', size: 44, x: 0.5, y: 0.32, bold: false }
+              ]
+            }
+          ]
+        };
+        state.activeSlideIndex = 0;
+      }
       state.editor.loadSlide(state.activeSlideIndex, state.spec, state.images);
       renderEditorFilmstrip();
     }

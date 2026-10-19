@@ -129,8 +129,21 @@ def vercel_api_entrypoint(subpath=""):
         return render_all_handler()
     elif endpoint in ("export-zip", "export_zip"):
         return export_zip_handler()
+    elif endpoint in ("stickers", "assets"):
+        return stickers_handler()
     else:
         return jsonify({"error": f"Unknown endpoint '{endpoint}'", "status": 404}), 404
+
+
+def stickers_handler():
+    cat = request.args.get("category", "all")
+    q = request.args.get("q", "")
+    items = ce.find_stickers(query=q, category=cat)
+    return jsonify({
+        "status": "ok",
+        "total": len(items),
+        "stickers": items
+    })
 
 
 def health_handler():

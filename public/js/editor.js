@@ -264,6 +264,14 @@ class ScrapbookEditor {
         break;
       }
 
+      case 'sticker':
+      case 'asset': {
+        const stkId = el.id || el.sticker_id || el.name || el.kind;
+        const stkPath = el.path || '';
+        obj = await this.createStickerAssetObject(stkId, stkPath, x, y, angle, el.size || 160);
+        break;
+      }
+
       case 'lotus_border': {
         obj = await this.createLotusBorderObject(x, y, W, el.h || 74);
         break;
@@ -918,7 +926,7 @@ class ScrapbookEditor {
       'jasmine_gajra': '🌸',
       'basket_gajra': '🧺'
     };
-    const symbol = emojiMap[kind] || '🪷';
+    const symbol = emojiMap[kind] || '✨';
     return new fabric.IText(symbol, {
       left: left,
       top: top,
@@ -927,8 +935,73 @@ class ScrapbookEditor {
       fontSize: size * 0.75,
       angle: angle,
       shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.22)', blur: 6, offsetX: 1, offsetY: 2 }),
-      scrapbookType: 'desi_sticker',
+      scrapbookType: 'sticker',
       stickerKind: kind
+    });
+  }
+
+  createStickerAssetObject(stkId, stkPath = '', left, top, angle = 0, size = 160) {
+    return new Promise((resolve) => {
+      let resolvedPath = stkPath;
+      if (!resolvedPath && stkId) {
+        if (window.StickerCatalog && Array.isArray(window.StickerCatalog)) {
+          const match = window.StickerCatalog.find(s => s.id === stkId || s.path === stkId || s.name === stkId);
+          if (match && match.path) resolvedPath = match.path;
+        }
+      }
+
+      const desiMap = {
+        'jhumka': '/assets/navratri/lotus_jhumka_hd.png',
+        'mojri': '/assets/navratri/embroidered_juttis.png',
+        'basket_gajra': '/assets/navratri/basket_gajra.png',
+        'marigold': '/assets/navratri/marigold_flower.png',
+        'marigold_garland': '/assets/navratri/marigold_garland.png',
+        'jasmine_gajra': '/assets/navratri/jasmine_gajra.png',
+        'pink_lotus': '/assets/navratri/pink_lotus.png',
+        'lotus': '/assets/navratri/pink_lotus.png',
+        'dandiya': '/assets/navratri/dandiya_sticks.png',
+        'diya': '/assets/navratri/clay_diya.png',
+        'chai': '/assets/navratri/chai_hand.png',
+        'mehndi_chai': '/assets/navratri/chai_hand.png',
+        'rickshaw': '/assets/navratri/rickshaw.png',
+        'garba': '/assets/navratri/dandiya_sticks.png'
+      };
+
+      if (!resolvedPath && stkId && desiMap[stkId]) {
+        resolvedPath = desiMap[stkId];
+      }
+
+      if (!resolvedPath && stkId && (stkId.startsWith('/') || stkId.startsWith('http') || stkId.startsWith('data:'))) {
+        resolvedPath = stkId;
+      }
+
+      if (resolvedPath) {
+        fabric.Image.fromURL(resolvedPath, (img) => {
+          if (!img || !img.width) {
+            resolve(this.createFallbackSticker(stkId || 'sticker', left, top, angle, size));
+            return;
+          }
+          const maxDim = Math.max(img.width, img.height);
+          const scale = size / (maxDim || 1);
+
+          img.set({
+            left: left,
+            top: top,
+            originX: 'center',
+            originY: 'center',
+            scaleX: scale,
+            scaleY: scale,
+            angle: angle,
+            shadow: new fabric.Shadow({ color: 'rgba(20, 10, 10, 0.28)', blur: 14, offsetX: 2, offsetY: 5 }),
+            scrapbookType: 'sticker',
+            stickerId: stkId || '',
+            stickerPath: resolvedPath
+          });
+          resolve(img);
+        }, { crossOrigin: 'anonymous' });
+      } else {
+        resolve(this.createFallbackSticker(stkId || 'sticker', left, top, angle, size));
+      }
     });
   }
 
@@ -1685,6 +1758,38 @@ class ScrapbookEditor {
     }
   }
 
+  async addStickerAsset(sticker, x = null, y = null) {
+    let stkId = '';
+    let stkPath = '';
+    let defaultSize = 180;
+
+    if (typeof sticker === 'string') {
+      stkId = sticker;
+      if (sticker.startsWith('/') || sticker.startsWith('http') || sticker.startsWith('data:')) {
+        stkPath = sticker;
+      }
+    } else if (sticker && typeof sticker === 'object') {
+      stkId = sticker.id || '';
+      stkPath = sticker.path || '';
+      if (sticker.suitable_placement && sticker.suitable_placement.default_scale) {
+        defaultSize = Math.round(180 * sticker.suitable_placement.default_scale);
+      }
+    }
+
+    const posX = x !== null ? x : (this.baseWidth / 2);
+    const posY = y !== null ? y : (this.baseHeight / 2);
+
+    const obj = await this.createStickerAssetObject(stkId, stkPath, posX, posY, 0, defaultSize);
+    if (obj) {
+      this.canvas.add(obj);
+      this.canvas.setActiveObject(obj);
+      this.canvas.renderAll();
+      this.saveHistoryState();
+      this.syncCurrentSlideToSpec();
+    }
+    return obj;
+  }
+
   async addMusicPlayerElement(title = 'Chogada - Loveyatri', artist = 'Darshan Raval, Asees Kaur') {
     const obj = await this.createMusicPlayerObject(title, artist, '2:18', '3:45', this.baseWidth / 2, this.baseHeight * 0.65, 0, 460);
     this.canvas.add(obj);
@@ -1821,7 +1926,7 @@ class ScrapbookEditor {
       this.history = this.history.slice(0, this.historyIndex + 1);
     }
 
-    const json = JSON.stringify(this.canvas.toDatalessJSON(['scrapbookType', 'scrapbookData']));
+    const json = JSON.stringify(this.canvas.toDatalessJSON(['scrapbookType', 'scrapbookData', 'stickerId', 'stickerPath', 'stickerKind']));
     this.history.push(json);
     this.historyIndex++;
 

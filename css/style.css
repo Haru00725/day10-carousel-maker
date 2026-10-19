@@ -1863,3 +1863,270 @@ input:checked + .slider:before {
     z-index: 5;
   }
 }
+
+/* ==========================================================================
+   Reusable & Searchable Sticker Library Styles
+   ========================================================================== */
+
+.sticker-lib-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.sticker-search-bar {
+  display: flex;
+  align-items: center;
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 0.35rem 0.65rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all var(--transition-fast);
+}
+
+.sticker-search-bar:focus-within {
+  border-color: var(--accent-terracotta);
+  box-shadow: 0 0 0 3px rgba(184, 80, 66, 0.12);
+}
+
+.search-glyph {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin-right: 0.4rem;
+  user-select: none;
+}
+
+.sticker-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--text-main);
+  min-width: 0;
+}
+
+.sticker-search-input::placeholder {
+  color: #9e9389;
+  font-size: 0.75rem;
+}
+
+.sticker-clear-btn {
+  background: none;
+  border: none;
+  color: #9e9389;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.sticker-clear-btn:hover {
+  color: var(--text-main);
+  background: #eee8df;
+}
+
+/* Category Filter Chips */
+.sticker-cat-scroll {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sticker-cat-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sticker-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.28rem 0.55rem;
+  background: #fbf9f5;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  font-size: 0.72rem;
+  color: var(--text-main);
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.sticker-cat-chip:hover {
+  background: #f4efe6;
+  border-color: #d1c5b4;
+}
+
+.sticker-cat-chip.active {
+  background: var(--text-main);
+  color: #ffffff;
+  border-color: var(--text-main);
+  font-weight: 500;
+}
+
+.sticker-cat-chip.active .cat-icon {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.cat-icon {
+  font-size: 0.8rem;
+}
+
+.cat-name {
+  font-size: 0.72rem;
+}
+
+/* Results Meta */
+.sticker-results-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #8c8278;
+  padding: 0 0.15rem;
+}
+
+.sticker-reset-btn {
+  background: none;
+  border: none;
+  color: var(--accent-terracotta);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+/* Sticker Asset Grid */
+.sticker-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: #ded6cb transparent;
+}
+
+.sticker-asset-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sticker-asset-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sticker-asset-grid::-webkit-scrollbar-thumb {
+  background-color: #ded6cb;
+  border-radius: 4px;
+}
+
+/* Sticker Card */
+.sticker-asset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.3rem 0.35rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  text-align: center;
+  position: relative;
+  user-select: none;
+}
+
+.sticker-asset-card:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: var(--accent-terracotta);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.sticker-asset-card.pop-active {
+  transform: scale(0.92);
+  transition: transform 0.1s ease;
+}
+
+.sticker-thumb-box {
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.sticker-thumb-img {
+  max-width: 100%;
+  max-height: 50px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  pointer-events: none;
+}
+
+.sticker-card-name {
+  font-size: 0.65rem;
+  color: var(--text-main);
+  line-height: 1.15;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Empty State */
+.sticker-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 1.5rem 0.5rem;
+  color: #8c8278;
+}
+
+.sticker-empty-state .empty-emoji {
+  font-size: 1.6rem;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.sticker-empty-state p {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin: 0 0 0.2rem;
+  color: var(--text-main);
+}
+
+.sticker-empty-state small {
+  font-size: 0.72rem;
+  color: #9e9389;
+}
+
+/* Mobile adjustments */
+#sticker-library-mobile .sticker-asset-grid {
+  grid-template-columns: repeat(4, 1fr);
+  max-height: 55vh;
+}
+
+@media (max-width: 480px) {
+  #sticker-library-mobile .sticker-asset-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+

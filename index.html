@@ -48,7 +48,7 @@
         <span class="tab-icon">👁️</span>
         <span class="tab-label">Preview</span>
       </button>
-      <button class="tab-btn" data-view="editor" id="tab-editor" disabled>
+      <button class="tab-btn" data-view="editor" id="tab-editor">
         <span class="tab-icon">🎨</span>
         <span class="tab-label">Visual Editor</span>
       </button>
@@ -444,35 +444,10 @@
               </div>
             </div>
 
-            <!-- Scrapbook Stickers & Doodles -->
+            <!-- Reusable, Searchable Scrapbook Sticker Library -->
             <div class="library-category">
-              <div class="category-title">Stickers & Doodles</div>
-              <div class="library-grid-buttons stickers-grid">
-                <button class="lib-btn sticker-btn" data-sticker="star-sparkle">
-                  <span class="sticker-symbol">✨</span>
-                  <span>Sparkle Star</span>
-                </button>
-                <button class="lib-btn sticker-btn" data-sticker="star-5">
-                  <span class="sticker-symbol">⭐</span>
-                  <span>5-Point Star</span>
-                </button>
-                <button class="lib-btn sticker-btn" data-sticker="arrow">
-                  <span class="sticker-symbol">↗️</span>
-                  <span>Doodled Arrow</span>
-                </button>
-                <button class="lib-btn sticker-btn" data-sticker="squiggle">
-                  <span class="sticker-symbol">〰️</span>
-                  <span>Squiggle Line</span>
-                </button>
-                <button class="lib-btn sticker-btn" data-sticker="heart">
-                  <span class="sticker-symbol">🤍</span>
-                  <span>Heart Stamp</span>
-                </button>
-                <button class="lib-btn sticker-btn" data-sticker="paperclip">
-                  <span class="sticker-symbol">📎</span>
-                  <span>Paper Clip</span>
-                </button>
-              </div>
+              <div class="category-title">🎨 Sticker Library</div>
+              <div id="sticker-library-desktop"></div>
             </div>
 
             <!-- Navratri & Festive Desi Elements -->
@@ -701,94 +676,9 @@
         </div>
       </div>
 
-      <!-- Panel 4: Stickers & Doodles -->
+      <!-- Panel 4: Reusable Sticker Library -->
       <div class="sheet-panel hidden" id="panel-stickers">
-        <div class="sheet-grid stickers-grid">
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="music-card">
-            <span class="sticker-symbol">🎵</span>
-            <span>Chogada</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="spotify-tere">
-            <span class="sticker-symbol">🎶</span>
-            <span>Tere Chehre</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-badge">
-            <span class="sticker-symbol">📜</span>
-            <span>Feeling Desi</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="lotus-border">
-            <span class="sticker-symbol">🪷</span>
-            <span>Lotus Border</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-marigold_garland">
-            <span class="sticker-symbol">🏵️</span>
-            <span>Garland</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-marigold">
-            <span class="sticker-symbol">🌼</span>
-            <span>Genda Phool</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-jasmine_gajra">
-            <span class="sticker-symbol">🌸</span>
-            <span>Mogra Gajra</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-basket_gajra">
-            <span class="sticker-symbol">🧺</span>
-            <span>Gajra Basket</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-pink_lotus">
-            <span class="sticker-symbol">🪷</span>
-            <span>Pink Lotus</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-jhumka">
-            <span class="sticker-symbol">🪞</span>
-            <span>Jhumka</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-mojri">
-            <span class="sticker-symbol">🥿</span>
-            <span>Juttis</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-dandiya">
-            <span class="sticker-symbol">🥁</span>
-            <span>Dandiya</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-diya">
-            <span class="sticker-symbol">🪔</span>
-            <span>Diya</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-mehndi-chai">
-            <span class="sticker-symbol">☕</span>
-            <span>Chai</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="desi-rickshaw">
-            <span class="sticker-symbol">🛺</span>
-            <span>Auto</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="star-sparkle">
-            <span class="sticker-symbol">✨</span>
-            <span>Sparkle</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="star-5">
-            <span class="sticker-symbol">⭐</span>
-            <span>Star</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="arrow">
-            <span class="sticker-symbol">↗️</span>
-            <span>Arrow</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="squiggle">
-            <span class="sticker-symbol">〰️</span>
-            <span>Squiggle</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="heart">
-            <span class="sticker-symbol">🤍</span>
-            <span>Heart</span>
-          </button>
-          <button class="sheet-item-btn sticker-sheet-btn" data-sticker="paperclip">
-            <span class="sticker-symbol">📎</span>
-            <span>Clip</span>
-          </button>
-        </div>
+        <div id="sticker-library-mobile"></div>
       </div>
 
       <!-- Panel 5: Paper Textures -->
@@ -854,8 +744,9 @@
   </dialog>
 
   <!-- Load Application Scripts -->
-  <script src="/js/canvas-export.js?v=2.2"></script>
-  <script src="/js/editor.js?v=2.2"></script>
-  <script src="/js/app.js?v=2.2"></script>
+  <script src="/js/canvas-export.js?v=2.3"></script>
+  <script src="/js/editor.js?v=2.3"></script>
+  <script src="/js/sticker-library.js?v=2.3"></script>
+  <script src="/js/app.js?v=2.3"></script>
 </body>
 </html>

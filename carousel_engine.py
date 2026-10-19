@@ -39,6 +39,106 @@ def get_navratri_asset_path(filename):
             return p
     return None
 
+def get_asset_file_path(subpath):
+    subpath = subpath.lstrip("/")
+    for base in [
+        HERE,
+        os.path.join(HERE, "public"),
+        os.path.join(HERE, ".."),
+        os.path.join(HERE, "..", "public"),
+        "."
+    ]:
+        p = os.path.join(base, subpath)
+        if os.path.exists(p):
+            return p
+    return None
+
+STICKERS_CATALOG = None
+
+def get_stickers_catalog():
+    global STICKERS_CATALOG
+    if STICKERS_CATALOG is not None:
+        return STICKERS_CATALOG
+    catalog_path = get_asset_file_path("assets/stickers_catalog.json")
+    if catalog_path and os.path.isfile(catalog_path):
+        try:
+            with open(catalog_path, "r", encoding="utf-8") as f:
+                STICKERS_CATALOG = json.load(f)
+        except Exception:
+            STICKERS_CATALOG = []
+    else:
+        STICKERS_CATALOG = []
+    return STICKERS_CATALOG
+
+def find_stickers(query="", category="all", limit=60):
+    catalog = get_stickers_catalog()
+    results = []
+    q = query.strip().lower() if query else ""
+    cat = category.strip().lower() if category else "all"
+
+    for item in catalog:
+        if cat != "all" and item.get("category", "").lower() != cat:
+            continue
+        if q:
+            match_score = 0
+            if q in item.get("name", "").lower():
+                match_score += 10
+            if q in item.get("id", "").lower():
+                match_score += 8
+            if any(q in tag.lower() for tag in item.get("theme_tags", [])):
+                match_score += 6
+            if q in item.get("visual_style", "").lower() or q in item.get("recommended_use", "").lower():
+                match_score += 3
+            if match_score > 0:
+                results.append((match_score, item))
+        else:
+            results.append((1, item))
+
+    if q:
+        results.sort(key=lambda x: x[0], reverse=True)
+    return [r[1] for r in results[:limit]]
+
+def get_sticker_asset(sticker_id_or_path, size=160):
+    catalog = get_stickers_catalog()
+    asset = None
+    target_str = str(sticker_id_or_path).strip()
+    
+    # 1. Direct ID or path match
+    for item in catalog:
+        if item.get("id") == target_str or item.get("path") == target_str:
+            asset = item
+            break
+            
+    # 2. Tag or partial match
+    if not asset:
+        t_low = target_str.lower()
+        for item in catalog:
+            if t_low in item.get("id", "").lower() or any(t_low in tag.lower() for tag in item.get("theme_tags", [])):
+                asset = item
+                break
+
+    resolved_path = None
+    if asset:
+        resolved_path = get_asset_file_path(asset.get("path", ""))
+    elif "/" in target_str or target_str.endswith(".png"):
+        resolved_path = get_asset_file_path(target_str)
+
+    if resolved_path and os.path.isfile(resolved_path):
+        try:
+            im = Image.open(resolved_path).convert("RGBA")
+            ratio = im.width / im.height
+            if ratio >= 1:
+                tw = size
+                th = max(1, int(tw / ratio))
+            else:
+                th = size
+                tw = max(1, int(th * ratio))
+            return im.resize((tw, th), Image.Resampling.LANCZOS)
+        except Exception:
+            pass
+
+    return make_desi_sticker(target_str, size)
+
 FONT_SPECS = {  # key: (file, variable-font weight)
     "rounded": ("Fredoka.ttf", 500), "rounded_bold": ("Fredoka.ttf", 600), "chunky": ("LilitaOne-Regular.ttf", None),
     "hand": ("Caveat.ttf", None), "serif": ("PlayfairDisplay.ttf", None), "serif_italic": ("PlayfairDisplay-Italic.ttf", None),
@@ -1539,8 +1639,12 @@ def draw_element(canvas, el, ox, W, H, theme, images, seed):
     elif t == "desi_badge":
         badge = make_feeling_desi_badge(int(el.get("w", 330)), int(el.get("h", 150)))
         put(canvas, badge, X, Y, rot)
+    elif t in ("sticker", "asset"):
+        stk_id = el.get("id") or el.get("kind") or el.get("path", "city-yellow-cab")
+        stk = get_sticker_asset(stk_id, int(el.get("size", 160)))
+        put(canvas, stk, X, Y, rot)
     elif t == "desi_sticker":
-        stk = make_desi_sticker(el.get("kind", "lotus"), int(el.get("size", 160)))
+        stk = get_sticker_asset(el.get("kind", "lotus"), int(el.get("size", 160)))
         put(canvas, stk, X, Y, rot)
     elif t == "lotus_border":
         lb = make_lotus_border(W, int(el.get("h", 125)))
@@ -1876,6 +1980,23 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     preserve_faces = exp.get("preserve_faces", False)
     photo_placement = exp.get("photo_placement", "tilted")
     
+    thematic_stickers = []
+    h_low = (hint or "").lower()
+    if any(w in h_low for w in ["cafe", "coffee", "latte", "croissant", "bakery", "food", "breakfast", "matcha"]):
+        thematic_stickers = ["cafe-latte-art", "cafe-croissant", "cafe-cherries", "cafe-matcha"]
+    elif any(w in h_low for w in ["travel", "trip", "vacation", "journey", "explore", "kyoto", "paris", "tokyo", "wanderlust"]):
+        thematic_stickers = ["travel-vintage-camera", "travel-airmail-postcard", "travel-passport-stamp", "travel-location-pin"]
+    elif any(w in h_low for w in ["coquette", "pink", "girly", "bow", "cute", "ballet", "heart"]):
+        thematic_stickers = ["coquette-pink-bow", "coquette-gingham-tape", "coquette-heart-locket", "coquette-sparkle-heart"]
+    elif any(w in h_low for w in ["city", "urban", "street", "taxi", "downtown", "new york", "subway"]):
+        thematic_stickers = ["city-yellow-cab", "city-street-sign", "city-subway-map", "city-transit-ticket"]
+    elif any(w in h_low for w in ["nature", "garden", "flower", "botanical", "spring", "green", "butterfly"]):
+        thematic_stickers = ["nature-monarch-butterfly", "nature-white-daisy", "nature-ginkgo-leaf", "nature-pink-lotus"]
+    elif any(w in h_low for w in ["fashion", "style", "ootd", "outfit", "shopping", "chic", "handbag"]):
+        thematic_stickers = ["fashion-quilted-handbag", "fashion-sunglasses", "fashion-lipstick"]
+    elif any(w in h_low for w in ["vintage", "retro", "film", "analog", "grunge", "polaroid", "antique"]):
+        thematic_stickers = ["vintage-35mm-film", "vintage-postage-stamp", "vintage-wax-seal", "vintage-paperclip"]
+
     total_slides = (n + 1) if (cover and not cont) else n
     spec = new_spec(size, mode, theme, grain=True, family="scrapbook", n=total_slides)
     spec["global"].update(counter=True, swipe=True)
@@ -1960,6 +2081,9 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 
                 if "paperclip" in motifs:
                     cov_els.append(E("paperclip", w=38, h=88, x=0.22, y=0.17, rotate=12, color="theme:star", z=2))
+                
+                if thematic_stickers:
+                    cov_els.append(E("sticker", id=thematic_stickers[0], size=180, x=0.82, y=0.68, rotate=8, z=2))
             
             sl[0].update(bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]}, elements=cov_els)
 
@@ -2090,6 +2214,11 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                         slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
                     elif "squiggle" in motifs and idx % 2 == 0:
                         slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=5, wavelength=65, thick=5, color="theme:hl", z=2))
+                
+                if thematic_stickers and not is_nav:
+                    stk_id = thematic_stickers[idx % len(thematic_stickers)]
+                    s_pos = (0.84 if idx % 2 == 0 else 0.16, 0.72 + rng.uniform(-0.04, 0.04))
+                    slide_els.append(E("sticker", id=stk_id, size=160, x=s_pos[0], y=s_pos[1], rotate=rng.randint(-12, 12), z=2))
                 
             sl[target_idx].update(
                 bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]},
