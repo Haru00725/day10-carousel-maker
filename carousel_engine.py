@@ -139,6 +139,177 @@ def get_sticker_asset(sticker_id_or_path, size=160):
 
     return make_desi_sticker(target_str, size)
 
+THEME_SYNONYMS = {
+    "city_life": [
+        "city", "urban", "skyline", "buildings", "building", "taxi", "cab", "street",
+        "sign", "subway", "metro", "transit", "traffic", "crosswalk", "ticket", "avenue",
+        "broadway", "route", "doodle", "downtown", "metropolis", "commute", "lights",
+        "city dump", "city life", "city trip", "manhattan", "nyc", "town", "concrete",
+        "skyscraper", "streets"
+    ],
+    "girly_coquette": [
+        "coquette", "girly", "cute", "bow", "ribbon", "ribbons", "gingham", "heart",
+        "hearts", "locket", "ballet", "balletcore", "pink", "soft", "sweet", "dollette",
+        "pretty", "love", "sparkle", "lace", "angelic", "pastel", "feminine", "pearl",
+        "cute coquette", "princess"
+    ],
+    "cafe_food": [
+        "cafe", "coffee", "latte", "espresso", "cappuccino", "croissant", "pastry",
+        "pastries", "bakery", "food", "cherries", "cherry", "matcha", "tea", "brunch",
+        "breakfast", "cookie", "plate", "plates", "drink", "bistro", "snack", "sweet",
+        "chai", "coffee date", "cafe date", "delicious", "foodie", "baking", "treats"
+    ],
+    "nature": [
+        "nature", "botanical", "garden", "flower", "flowers", "leaf", "leaves",
+        "butterfly", "butterflies", "monarch", "daisy", "daisies", "ginkgo", "lotus",
+        "spring", "bloom", "blooms", "blossom", "blossoms", "flora", "green", "organic",
+        "earthy", "plants", "forest", "dreamy botanical", "meadow", "wildflowers", "foliage"
+    ],
+    "travel": [
+        "travel", "trip", "vacation", "holiday", "journey", "explore", "explorer",
+        "wanderlust", "camera", "cameras", "postcard", "postcards", "airmail",
+        "suitcase", "suitcases", "luggage", "passport", "stamp", "stamps", "location",
+        "pin", "map", "maps", "destination", "adventure", "flight", "tourist", "travel life"
+    ],
+    "fashion": [
+        "fashion", "style", "ootd", "outfit", "outfits", "handbag", "handbags", "purse",
+        "bag", "sunglasses", "shades", "glasses", "lipstick", "lipsticks", "makeup",
+        "cosmetics", "beauty", "chic", "glam", "luxury", "accessories", "wardrobe",
+        "shoes", "juttis", "jhumka", "jewelry", "model", "runway", "editorial"
+    ],
+    "vintage_grunge": [
+        "vintage", "grunge", "retro", "film", "analog", "35mm", "negative", "stamp",
+        "postage", "wax", "seal", "paperclip", "clip", "receipt", "distressed",
+        "antique", "sepia", "nostalgia", "memories", "polaroid", "archive", "ephemera",
+        "newspaper", "scrapbook", "thrift"
+    ],
+    "festive_desi": [
+        "navratri", "garba", "dandiya", "desi", "indian", "ethnic", "lehenga", "jhumka",
+        "jhumkas", "juttis", "mojri", "gajra", "marigold", "genda", "lotus", "pichwai",
+        "diya", "rickshaw", "festive", "diwali", "chogada"
+    ]
+}
+
+COMPATIBLE_CATEGORIES = {
+    "city_life": ["travel", "vintage_grunge"],
+    "girly_coquette": ["nature", "fashion"],
+    "cafe_food": ["vintage_grunge", "girly_coquette"],
+    "nature": ["girly_coquette", "travel"],
+    "travel": ["city_life", "vintage_grunge"],
+    "fashion": ["girly_coquette", "city_life"],
+    "vintage_grunge": ["travel", "cafe_food"],
+    "festive_desi": ["nature", "fashion"]
+}
+
+CATEGORY_PRIMARY_ASSETS = {
+    "city_life": ["city-buildings", "city-yellow-cab", "city-street-sign", "city-subway-map", "travel-vintage-camera", "city-traffic-light", "city-transit-ticket"],
+    "girly_coquette": ["coquette-pink-bow", "coquette-gingham-tape", "coquette-heart-locket", "coquette-sparkle-heart", "nature-white-daisy", "nature-monarch-butterfly"],
+    "cafe_food": ["cafe-latte-art", "cafe-croissant", "cafe-cherries", "cafe-matcha", "vintage-cafe-receipt", "desi-mehndi-chai"],
+    "nature": ["nature-white-daisy", "nature-monarch-butterfly", "nature-ginkgo-leaf", "nature-pink-lotus", "desi-marigold", "desi-jasmine_gajra"],
+    "travel": ["travel-vintage-camera", "travel-airmail-postcard", "travel-passport-stamp", "travel-location-pin", "travel-leather-suitcase", "city-subway-map"],
+    "fashion": ["fashion-quilted-handbag", "fashion-sunglasses", "fashion-lipstick", "coquette-pink-bow", "desi-jhumka", "desi-mojri"],
+    "vintage_grunge": ["vintage-35mm-film", "vintage-postage-stamp", "vintage-wax-seal", "vintage-paperclip", "vintage-cafe-receipt", "travel-vintage-camera"],
+    "festive_desi": ["desi-marigold_garland", "desi-lotus_jhumka_hd", "desi-embroidered_juttis", "desi-jasmine_gajra", "desi-basket_gajra", "desi-pink_lotus", "desi-mehndi_chai", "desi-rickshaw"]
+}
+
+def rank_theme_stickers(brief, hint=""):
+    """
+    Ranks sticker assets from the catalog based on the AI design plan and user creative brief.
+    Scores tags, synonyms, categories, and compatible fallback themes.
+    Returns an ordered list of sticker dicts or IDs with high theme relevance.
+    """
+    catalog = get_stickers_catalog()
+    if not catalog:
+        return []
+
+    # 1. Gather all signals from brief & user hint
+    main_theme = str(brief.get("main_theme", "")).lower()
+    aesthetic = str(brief.get("aesthetic", "")).lower()
+    mood_energy = str(brief.get("mood_energy", "")).lower()
+    motifs = [str(m).lower() for m in brief.get("motifs", [])]
+    exp = brief.get("explicit_instructions", {})
+    user_notes = str(exp.get("user_notes", "")).lower() if isinstance(exp, dict) else ""
+    raw_hint = str(hint or "").lower()
+
+    text_tokens = f"{main_theme} {aesthetic} {mood_energy} {' '.join(motifs)} {user_notes} {raw_hint}"
+
+    # 2. Identify primary and secondary theme clusters
+    cluster_scores = {}
+    for cat_key, keywords in THEME_SYNONYMS.items():
+        score = 0
+        for kw in keywords:
+            if kw in text_tokens:
+                score += 15 if len(kw) > 4 else 8
+        cluster_scores[cat_key] = score
+
+    top_cluster = max(cluster_scores, key=cluster_scores.get)
+    if cluster_scores[top_cluster] == 0:
+        top_cluster = "vintage_grunge" if "dark" in text_tokens else "nature"
+
+    compatible_cats = COMPATIBLE_CATEGORIES.get(top_cluster, [])
+    priority_ids = CATEGORY_PRIMARY_ASSETS.get(top_cluster, [])
+
+    # 3. Score every catalog asset
+    scored_assets = []
+    for asset in catalog:
+        aid = asset.get("id", "")
+        acat = asset.get("category", "")
+        atags = [t.lower() for t in asset.get("theme_tags", [])]
+        aname = asset.get("name", "").lower()
+
+        score = 0
+        if acat == top_cluster:
+            score += 40
+        elif acat in compatible_cats:
+            score += 15
+
+        if aid in priority_ids:
+            score += 30
+
+        for tag in atags:
+            if tag in text_tokens:
+                score += 18
+
+        for word in aname.split():
+            if len(word) > 3 and word in text_tokens:
+                score += 12
+
+        if "flowers" in motifs and (acat == "nature" or "flower" in atags or "daisy" in atags):
+            score += 25
+        if "hearts" in motifs and ("heart" in atags or "locket" in atags):
+            score += 25
+        if "stars" in motifs and "sparkle" in atags:
+            score += 15
+        if "film_strip" in motifs and "film" in atags:
+            score += 25
+
+        if score > 0:
+            scored_assets.append((score, asset))
+
+    scored_assets.sort(key=lambda x: x[0], reverse=True)
+    ranked = [item[1] for item in scored_assets]
+
+    seen_ids = {a.get("id") for a in ranked}
+    for pid in priority_ids:
+        if pid not in seen_ids:
+            for item in catalog:
+                if item.get("id") == pid:
+                    ranked.append(item)
+                    seen_ids.add(pid)
+                    break
+
+    for ccat in compatible_cats:
+        for item in catalog:
+            if item.get("category") == ccat and item.get("id") not in seen_ids:
+                ranked.append(item)
+                seen_ids.add(item.get("id"))
+                if len(ranked) >= 12:
+                    break
+        if len(ranked) >= 12:
+            break
+
+    return ranked
+
 FONT_SPECS = {  # key: (file, variable-font weight)
     "rounded": ("Fredoka.ttf", 500), "rounded_bold": ("Fredoka.ttf", 600), "chunky": ("LilitaOne-Regular.ttf", None),
     "hand": ("Caveat.ttf", None), "serif": ("PlayfairDisplay.ttf", None), "serif_italic": ("PlayfairDisplay-Italic.ttf", None),
@@ -394,14 +565,16 @@ def heuristic_creative_brief(hint="", colors=None, tone="light"):
         theme = "festive celebration"
     elif any(w in h for w in ["cafe", "coffee", "latte", "bakery", "cappuccino", "brunch", "date"]):
         theme = "cafe date"
-    elif any(w in h for w in ["city", "tokyo", "nyc", "urban", "metro", "street", "night out"]):
+    elif any(w in h for w in ["coquette", "bow", "pink", "doll", "ballet", "cute"]):
+        theme = "cute coquette"
+    elif any(w in h for w in ["city", "tokyo", "nyc", "urban", "metro", "street", "night out", "city dump", "city life"]):
         theme = "city life"
     elif any(w in h for w in ["travel", "vacation", "trip", "roadtrip", "beach", "summer", "island"]):
         theme = "travel"
     elif any(w in h for w in ["fashion", "outfit", "fit", "style", "editorial", "lookbook"]):
         theme = "fashion"
-    elif any(w in h for w in ["nature", "hiking", "greenery", "mountain", "forest", "botanical", "lake"]):
-        theme = "nature"
+    elif any(w in h for w in ["nature", "hiking", "greenery", "mountain", "forest", "botanical", "lake", "dreamy botanical"]):
+        theme = "dreamy botanical"
     else:
         theme = "lifestyle memories"
         
@@ -410,6 +583,8 @@ def heuristic_creative_brief(hint="", colors=None, tone="light"):
         aes = "desi festive"
     elif any(w in h for w in ["coquette", "bow", "pink", "doll", "ballet"]):
         aes = "coquette"
+    elif any(w in h for w in ["botanical", "flower", "leaves", "flora"]):
+        aes = "botanical"
     elif any(w in h for w in ["grunge", "dark", "punk", "moody", "goth", "underground", "cyber"]):
         aes = "grunge"
     elif any(w in h for w in ["minimal", "minimalist", "clean", "simple", "neutral", "modern"]):
@@ -426,6 +601,7 @@ def heuristic_creative_brief(hint="", colors=None, tone="light"):
     # 3. Mood & Energy
     mood_map = {
         "coquette": "soft & delicate",
+        "botanical": "organic & serene",
         "grunge": "raw & moody",
         "minimalist": "calm & serene",
         "vintage": "nostalgic & warm",
@@ -505,19 +681,21 @@ def heuristic_creative_brief(hint="", colors=None, tone="light"):
         motifs = ["desi_sticker", "stars", "tape"]
     elif aes == "coquette":
         motifs = ["hearts", "tape", "flowers", "stars"]
+    elif aes in ("botanical", "nature"):
+        motifs = ["flowers", "tape", "stars"]
+    elif theme == "city life":
+        motifs = ["tape", "stars", "squiggle", "arrows"]
     elif aes == "grunge":
         motifs = ["tape", "film_strip", "dots", "highlight"]
     elif aes == "minimalist":
         motifs = ["tape", "stars"]
-    elif aes == "nature":
-        motifs = ["flowers", "tape", "stars"]
     else:
         motifs = ["tape", "stars", "squiggle"]
         
     # 7. Decoration Density
     if any(w in h for w in ["minimal", "clean", "simple", "spacious", "uncluttered", "few stickers"]):
         density = "minimal"
-    elif any(w in h for w in ["heavy", "dense", "junk journal", "lots of stickers", "maximalist"]):
+    elif any(w in h for w in ["heavy", "heavily", "dense", "junk journal", "lots of", "maximalist", "packed", "crowded"]):
         density = "heavily_decorated"
     else:
         density = "balanced"
@@ -688,6 +866,7 @@ def clean_vibe(raw, n, hint=""):
         },
         "post_caption": str(raw.get("post_caption") or ("nine nights of pure magic, garba beats & lehenga twirls ✨💃🪘" if is_nav else "")).strip(),
         "hashtags": [str(h).lstrip("#").strip() for h in (raw.get("hashtags") or (["navratri", "garbanights", "feelingdesi", "chogada", "festivevibes"] if is_nav else [])) if str(h).strip()][:5],
+        "hint": str(hint or raw.get("hint") or "")
     }
 
 
@@ -1725,7 +1904,9 @@ def stitch(slides, gap=0):
 
 # ============================================================ building the first spec
 def E(type_, **kw):
-    kw.update(type=type_, id=uuid.uuid4().hex[:6])
+    el_id = kw.pop("id", None) or uuid.uuid4().hex[:6]
+    kw["type"] = type_
+    kw["id"] = el_id
     kw.setdefault("z", 1)
     return kw
 
@@ -1911,13 +2092,14 @@ def build_scribble(images, vibe, mode, size, seed, cover=True):
     return spec
 
 
-def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, cover=True):
+def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, cover=True, hint=""):
     W, H = size
     n = len(images)
     rng = random.Random(seed)
     cont = mode == "continuous"
     
     brief = vibe.get("creative_brief") or {}
+    hint_str = str(hint or vibe.get("hint") or (vibe.get("creative_brief") or {}).get("explicit_instructions", {}).get("user_notes", "") or "")
     is_nav = any(w in str(vibe).lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "pichwai", "festive"]) or vibe.get("style") == "pichwai" or brief.get("aesthetic") == "desi festive"
     
     if is_nav:
@@ -1980,22 +2162,8 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     preserve_faces = exp.get("preserve_faces", False)
     photo_placement = exp.get("photo_placement", "tilted")
     
-    thematic_stickers = []
-    h_low = (hint or "").lower()
-    if any(w in h_low for w in ["cafe", "coffee", "latte", "croissant", "bakery", "food", "breakfast", "matcha"]):
-        thematic_stickers = ["cafe-latte-art", "cafe-croissant", "cafe-cherries", "cafe-matcha"]
-    elif any(w in h_low for w in ["travel", "trip", "vacation", "journey", "explore", "kyoto", "paris", "tokyo", "wanderlust"]):
-        thematic_stickers = ["travel-vintage-camera", "travel-airmail-postcard", "travel-passport-stamp", "travel-location-pin"]
-    elif any(w in h_low for w in ["coquette", "pink", "girly", "bow", "cute", "ballet", "heart"]):
-        thematic_stickers = ["coquette-pink-bow", "coquette-gingham-tape", "coquette-heart-locket", "coquette-sparkle-heart"]
-    elif any(w in h_low for w in ["city", "urban", "street", "taxi", "downtown", "new york", "subway"]):
-        thematic_stickers = ["city-yellow-cab", "city-street-sign", "city-subway-map", "city-transit-ticket"]
-    elif any(w in h_low for w in ["nature", "garden", "flower", "botanical", "spring", "green", "butterfly"]):
-        thematic_stickers = ["nature-monarch-butterfly", "nature-white-daisy", "nature-ginkgo-leaf", "nature-pink-lotus"]
-    elif any(w in h_low for w in ["fashion", "style", "ootd", "outfit", "shopping", "chic", "handbag"]):
-        thematic_stickers = ["fashion-quilted-handbag", "fashion-sunglasses", "fashion-lipstick"]
-    elif any(w in h_low for w in ["vintage", "retro", "film", "analog", "grunge", "polaroid", "antique"]):
-        thematic_stickers = ["vintage-35mm-film", "vintage-postage-stamp", "vintage-wax-seal", "vintage-paperclip"]
+    ranked_sticker_objs = rank_theme_stickers(brief, hint_str)
+    thematic_stickers = [s.get("id") for s in ranked_sticker_objs if s.get("id")]
 
     total_slides = (n + 1) if (cover and not cont) else n
     spec = new_spec(size, mode, theme, grain=True, family="scrapbook", n=total_slides)
@@ -2068,7 +2236,10 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             ])
             
             # Cover decorative motifs based on creative brief
-            if density != "minimal":
+            if density == "minimal":
+                if thematic_stickers and not preserve_faces:
+                    cov_els.append(E("sticker", id=thematic_stickers[0], size=135, x=0.84, y=0.18, rotate=6, z=2))
+            else:
                 if "hearts" in motifs:
                     cov_els.append(E("heart", size=54, x=0.15, y=0.65, rotate=-12, color="theme:accent", z=2))
                     cov_els.append(E("heart", size=40, x=0.88, y=0.68, rotate=15, color="theme:accent", z=2))
@@ -2082,8 +2253,14 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 if "paperclip" in motifs:
                     cov_els.append(E("paperclip", w=38, h=88, x=0.22, y=0.17, rotate=12, color="theme:star", z=2))
                 
+                # City life route doodle on cover
+                if any(w in (hint or "").lower() for w in ["city", "street", "route", "doodle"]):
+                    cov_els.append(E("squiggle", span=0.40, x=0.5, y=0.92, amp=6, wavelength=60, thick=4, color="theme:hl", z=2))
+                
                 if thematic_stickers:
                     cov_els.append(E("sticker", id=thematic_stickers[0], size=180, x=0.82, y=0.68, rotate=8, z=2))
+                    if density == "heavily_decorated" and len(thematic_stickers) > 1:
+                        cov_els.append(E("sticker", id=thematic_stickers[1], size=140, x=0.16, y=0.66, rotate=-10, z=2))
             
             sl[0].update(bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]}, elements=cov_els)
 
@@ -2185,7 +2362,36 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                   rotate=note_rot, shadow=False, line_gap=1.05)
             )
             
-            # 5. Decorative motifs based on brief
+            # 5. Thematic stickers & decorative motifs based on brief & density
+            if not is_nav and thematic_stickers:
+                stk_offset = 1 if cover else 0
+                if density == "minimal":
+                    # Minimal: placed on alternating slides only, small size, high breathing room
+                    if idx % 2 == 0:
+                        stk_id = thematic_stickers[(stk_offset + idx // 2) % len(thematic_stickers)]
+                        s_x = 0.85 if idx % 4 == 0 else 0.15
+                        s_y = 0.77 if preserve_faces else 0.74
+                        slide_els.append(E("sticker", id=stk_id, size=140, x=s_x, y=s_y, rotate=round(rng.uniform(-7, 7), 1), z=2))
+                elif density == "balanced":
+                    # Balanced: 1 sticker per slide, non-adjacent repetition
+                    stk_id = thematic_stickers[(stk_offset + idx) % len(thematic_stickers)]
+                    s_x = 0.84 if idx % 2 == 0 else 0.16
+                    s_y = 0.76 if preserve_faces else round(0.72 + rng.uniform(-0.03, 0.03), 2)
+                    slide_els.append(E("sticker", id=stk_id, size=165, x=s_x, y=s_y, rotate=rng.randint(-12, 12), z=2))
+                else:
+                    # Heavily decorated: 2 stickers per slide (1 primary + 1 secondary accent in opposing corners)
+                    stk1 = thematic_stickers[(stk_offset + idx * 2) % len(thematic_stickers)]
+                    s1_x = 0.84 if idx % 2 == 0 else 0.16
+                    s1_y = 0.76 if preserve_faces else round(0.72 + rng.uniform(-0.03, 0.03), 2)
+                    slide_els.append(E("sticker", id=stk1, size=175, x=s1_x, y=s1_y, rotate=rng.randint(-12, 12), z=2))
+                    
+                    if len(thematic_stickers) > 1:
+                        stk2 = thematic_stickers[(stk_offset + idx * 2 + 1) % len(thematic_stickers)]
+                        s2_x = 0.16 if idx % 2 == 0 else 0.84
+                        s2_y = 0.18 if preserve_faces else round(0.22 + rng.uniform(-0.03, 0.03), 2)
+                        slide_els.append(E("sticker", id=stk2, size=135, x=s2_x, y=s2_y, rotate=rng.randint(-10, 10), z=2))
+
+            # 6. Secondary motifs (stars, hearts, route doodles, flowers)
             if density != "minimal":
                 p_left = (0.14 if idx % 2 == 0 else 0.86, 0.18 + rng.uniform(-0.03, 0.03))
                 p_right = (0.88 if idx % 2 == 0 else 0.12, 0.72 + rng.uniform(-0.03, 0.03))
@@ -2207,18 +2413,18 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                     slide_els.append(E("star", shape="sparkle4", size=rng.randint(28, 44), x=p_right[0], y=p_right[1],
                                        rotate=rng.randint(-15, 15), color="theme:star", z=2))
                 
+                # City life route doodles
+                if any(w in (hint or "").lower() for w in ["city", "street", "route", "doodle"]) and idx % 2 == 0:
+                    slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=6, wavelength=60, thick=4, color="theme:hl", z=2))
+                    slide_els.append(E("arrow", x=0.18, y=0.88, x2=0.28, y2=0.91, bend=-20, width=5, color="theme:note", z=2))
+                
                 if not cont:
                     if density == "heavily_decorated" and n > 1 and idx % 2 == 1 and not preserve_faces:
                         inset_ph = (idx + 1) % n
                         slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
                         slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
-                    elif "squiggle" in motifs and idx % 2 == 0:
+                    elif "squiggle" in motifs and idx % 2 == 0 and not any(w in (hint or "").lower() for w in ["city", "street"]):
                         slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=5, wavelength=65, thick=5, color="theme:hl", z=2))
-                
-                if thematic_stickers and not is_nav:
-                    stk_id = thematic_stickers[idx % len(thematic_stickers)]
-                    s_pos = (0.84 if idx % 2 == 0 else 0.16, 0.72 + rng.uniform(-0.04, 0.04))
-                    slide_els.append(E("sticker", id=stk_id, size=160, x=s_pos[0], y=s_pos[1], rotate=rng.randint(-12, 12), z=2))
                 
             sl[target_idx].update(
                 bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]},
@@ -2254,6 +2460,14 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                     E("star", shape="sparkle4", size=rng.randint(52, 78), x=1.0,
                       y=0.48 + rng.uniform(-0.12, 0.12), rotate=rng.randint(-15, 15),
                       color="theme:star", z=2)
+                )
+            
+            # Thematic cross-seam bridge sticker
+            if thematic_stickers and not is_nav and b % 2 == 0:
+                bridge_stk = thematic_stickers[(b + 1) % len(thematic_stickers)]
+                sl[prev_idx]["elements"].append(
+                    E("sticker", id=bridge_stk, size=135, x=1.0, y=round(0.48 + rng.uniform(-0.06, 0.06), 2),
+                      rotate=rng.randint(-8, 8), z=2)
                 )
             
             # Additional seam element
