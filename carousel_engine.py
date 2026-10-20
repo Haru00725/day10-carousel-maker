@@ -1228,7 +1228,7 @@ def text_layer(el, theme, W):
     return Image.alpha_composite(layer, top)
 
 
-# ============================================================ photo helpers
+# ============================================================ photo helpers & composition engine
 def fit_photo(img, size, centering=(0.5, 0.4)):
     return ImageOps.fit(img.convert("RGB"), size, Image.LANCZOS, centering=centering)
 
@@ -1241,13 +1241,255 @@ def cover_crop(img, W, H, fx=0.5, fy=0.5, zoom=1.0):
     return img.resize((W, H), Image.LANCZOS, box=(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2))
 
 
+def analyze_photo_composition(img):
+    """Fast, local saliency and composition analysis using PIL and NumPy (<2ms per image).
+    Identifies main subject, approximate focal point, face-presence, scene type, and empty quadrants.
+    """
+    orig_w, orig_h = img.size
+    aspect = orig_w / max(1, orig_h)
+
+    # Work at 128x128 for instantaneous execution
+    small = img.convert("RGB").resize((128, 128), Image.Resampling.BILINEAR)
+    arr = np.array(small, dtype=np.float32)
+
+    # 1. Edge energy
+    gray = small.convert("L")
+    edges = np.array(gray.filter(ImageFilter.FIND_EDGES), dtype=np.float32) / 255.0
+
+    # 2. Color saturation & luminance contrast
+    r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+    max_c = np.maximum(np.maximum(r, g), b)
+    min_c = np.minimum(np.minimum(r, g), b)
+    sat = np.where(max_c > 1.0, (max_c - min_c) / (max_c + 1e-5), 0.0)
+    lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+    lum_dev = np.abs(lum - np.median(lum))
+
+    # 3. Skin tone heuristic (typical human face in RGB: R > G > B and localized cluster)
+    skin_mask = (r > 95) & (g > 40) & (b > 20) & (r > g) & (g > b) & ((r - g) > 12) & ((r - b) > 15)
+    face_prior = np.zeros((128, 128), dtype=np.float32)
+    face_prior[12:88, 22:106] = 1.0
+    face_energy = skin_mask.astype(np.float32) * face_prior * (edges + 0.3)
+    skin_fraction = float(np.mean(skin_mask))
+    face_count = float(np.sum(face_energy))
+    # Exclude wide uniform wooden floors/walls (>35% of frame)
+    has_face = bool(80.0 < face_count < 1400.0 and 0.02 < skin_fraction < 0.35)
+
+    # 4. Saliency map
+    saliency = edges * 0.45 + sat * 0.25 + lum_dev * 0.30
+    if has_face:
+        saliency += face_energy * 0.50
+
+    total_sal = float(np.sum(saliency)) or 1.0
+    y_coords, x_coords = np.indices((128, 128))
+    fx = float(np.sum(x_coords * saliency) / total_sal) / 128.0
+    fy = float(np.sum(y_coords * saliency) / total_sal) / 128.0
+
+    # Subject bounding box enclosing ~75-80% of energy
+    col_energy = np.sum(saliency, axis=0)
+    row_energy = np.sum(saliency, axis=1)
+    cum_col = np.cumsum(col_energy) / total_sal
+    cum_row = np.cumsum(row_energy) / total_sal
+
+    sx0 = max(0.05, float(np.searchsorted(cum_col, 0.10)) / 128.0)
+    sx1 = min(0.95, float(np.searchsorted(cum_col, 0.90)) / 128.0)
+    sy0 = max(0.05, float(np.searchsorted(cum_row, 0.10)) / 128.0)
+    sy1 = min(0.95, float(np.searchsorted(cum_row, 0.90)) / 128.0)
+    if sx1 - sx0 < 0.25: sx1 = min(0.95, sx0 + 0.25)
+    if sy1 - sy0 < 0.25: sy1 = min(0.95, sy0 + 0.25)
+
+    # 5. Empty space analysis in quadrants and bands
+    inv_sal = np.max(saliency) - saliency
+    q_tl = float(np.mean(inv_sal[:64, :64]))
+    q_tr = float(np.mean(inv_sal[:64, 64:]))
+    q_bl = float(np.mean(inv_sal[64:, :64]))
+    q_br = float(np.mean(inv_sal[64:, 64:]))
+    quad_scores = {"top_left": q_tl, "top_right": q_tr, "bottom_left": q_bl, "bottom_right": q_br}
+    empty_quadrants = sorted(quad_scores.keys(), key=lambda k: quad_scores[k], reverse=True)
+
+    band_top = float(np.mean(inv_sal[:36, :]))
+    band_bottom = float(np.mean(inv_sal[92:, :]))
+    band_left = float(np.mean(inv_sal[:, :36]))
+    band_right = float(np.mean(inv_sal[:, 92:]))
+
+    # 6. Scene classification
+    if has_face or (aspect < 0.88 and fy < 0.52 and (sy1 - sy0) > 0.45):
+        scene_type = "portrait"
+    elif aspect > 1.20:
+        scene_type = "scenery"
+    elif 0.75 <= aspect <= 1.20 and not has_face and (band_left + band_right) > (band_top + band_bottom):
+        scene_type = "cafe"
+    elif (sx1 - sx0) < 0.65 and (sy1 - sy0) < 0.65:
+        scene_type = "object"
+    else:
+        scene_type = "general"
+
+    return {
+        "scene_type": scene_type,
+        "focal_point": (round(fx, 3), round(fy, 3)),
+        "subject_box": (round(sx0, 3), round(sy0, 3), round(sx1, 3), round(sy1, 3)),
+        "has_face": has_face,
+        "aspect_ratio": round(aspect, 3),
+        "empty_quadrants": empty_quadrants,
+        "empty_bands": {"top": band_top, "bottom": band_bottom, "left": band_left, "right": band_right}
+    }
+
+
+def boxes_intersect(b1, b2, margin=0.0):
+    """Returns True if box1 (x0, y0, x1, y1) overlaps box2 with an optional margin buffer."""
+    return not (b1[2] + margin < b2[0] or b1[0] - margin > b2[2] or
+                b1[3] + margin < b2[1] or b1[1] - margin > b2[3])
+
+
+def compute_slide_composition(photo_info, slide_idx, total_slides, brief, W=1080, H=1350, is_cover=False, rng=None):
+    """Layout constraint solver that computes optimal frame placement and ranks candidate sticker slots
+    around the photo subject without collisions, respecting user instructions and empty space.
+    """
+    rng = rng or random.Random(slide_idx)
+    exp = brief.get("explicit_instructions", {})
+    preserve_faces = exp.get("preserve_faces", False) or photo_info.get("has_face", False)
+    placement = exp.get("photo_placement", "tilted")
+    scene = photo_info.get("scene_type", "general")
+    fx, fy = photo_info.get("focal_point", (0.5, 0.4))
+    sx0, sy0, sx1, sy1 = photo_info.get("subject_box", (0.2, 0.2, 0.8, 0.8))
+
+    # 1. Optimal Frame Placement
+    if is_cover:
+        cx, cy = 0.5, 0.38
+        rot = 0.0 if (preserve_faces or brief.get("decoration_density") == "minimal") else -2.5
+    elif preserve_faces or placement == "center":
+        cx, cy, rot = 0.5, 0.44, 0.0
+    elif placement == "staggered":
+        cx = 0.46 if slide_idx % 2 == 0 else 0.54
+        cy = 0.43 if slide_idx % 2 == 0 else 0.45
+        rot = round((-1.5 if slide_idx % 2 == 0 else 1.5), 1)
+    else:
+        # Scene-aware dynamic composition archetype
+        if scene == "scenery":
+            cx = 0.5
+            cy = 0.46 if photo_info["empty_bands"]["top"] > photo_info["empty_bands"]["bottom"] else 0.43
+            rot = round(rng.uniform(-1.5, 1.5), 1)
+        elif scene == "portrait":
+            cx = 0.5
+            cy = 0.44
+            rot = round(rng.uniform(-1.5, 1.5) if not preserve_faces else 0.0, 1)
+        elif scene == "cafe":
+            cx = 0.48 if fx >= 0.5 else 0.52
+            cy = 0.44
+            rot = round((-2.2 if slide_idx % 2 == 0 else 2.2) + rng.uniform(-0.5, 0.5), 1)
+        else: # object
+            cx = 0.47 if slide_idx % 2 == 0 else 0.53
+            cy = 0.43
+            rot = round((-2.5 if slide_idx % 2 == 0 else 2.5), 1)
+
+    # Frame footprint on canvas
+    fw_norm = 640.0 / W
+    fh_norm = 880.0 / H
+    frame_box = (cx - fw_norm / 2, cy - fh_norm / 2, cx + fw_norm / 2, cy + fh_norm / 2)
+
+    # Photo content area inside frame (inset by padding)
+    px0 = frame_box[0] + 30.0 / W
+    px1 = frame_box[2] - 30.0 / W
+    py0 = frame_box[1] + 30.0 / H
+    py1 = frame_box[1] + (30.0 + 760.0) / H
+    pw = max(0.1, px1 - px0)
+    ph = max(0.1, py1 - py0)
+
+    # Subject forbidden zone in canvas normalized coordinates
+    buffer_x = 0.04 if not preserve_faces else 0.07
+    buffer_y = 0.04 if not preserve_faces else 0.07
+    subj_box = (
+        max(0.0, px0 + sx0 * pw - buffer_x),
+        max(0.0, py0 + sy0 * ph - buffer_y),
+        min(1.0, px0 + sx1 * pw + buffer_x),
+        min(1.0, py0 + sy1 * ph + buffer_y)
+    )
+
+    # Text box (caption/subtitle at bottom, or title block on cover)
+    if is_cover:
+        text_box = (0.10, 0.60, 0.90, 0.94)
+    else:
+        text_box = (0.10, 0.82, 0.90, 0.93)
+
+    # Candidate sticker slots around the subject & frame
+    candidates = [
+        # Bottom-Right frame margin overlap (classic scrapbook sweet spot)
+        (min(0.88, frame_box[2] + 0.02), frame_box[3] - 0.06, 170, "bottom_right"),
+        # Bottom-Left frame margin overlap
+        (max(0.12, frame_box[0] - 0.02), frame_box[3] - 0.06, 170, "bottom_left"),
+        # Top-Right corner / floating
+        (min(0.88, frame_box[2] + 0.03), max(0.14, frame_box[1] + 0.04), 145, "top_right"),
+        # Top-Left corner / floating
+        (max(0.12, frame_box[0] - 0.03), max(0.14, frame_box[1] + 0.04), 145, "top_left"),
+        # Right flank
+        (0.86, cy, 150, "right_flank"),
+        # Left flank
+        (0.14, cy, 150, "left_flank"),
+    ]
+
+    # Score and filter candidate slots
+    scored_slots = []
+    for (sx, sy, sz, sname) in candidates:
+        sz_w = sz / W
+        sz_h = sz / H
+        stk_box = (sx - sz_w / 2, sy - sz_h / 2, sx + sz_w / 2, sy + sz_h / 2)
+
+        # Hard constraint: strictly inside canvas bounds [0.05, 0.95]
+        if stk_box[0] < 0.05 or stk_box[2] > 0.95 or stk_box[1] < 0.05 or stk_box[3] > 0.95:
+            continue
+        # Hard constraint: NEVER overlap the photo subject / face box!
+        if boxes_intersect(stk_box, subj_box):
+            continue
+        # Hard constraint: NEVER overlap text box
+        if boxes_intersect(stk_box, text_box):
+            continue
+
+        score = 50.0
+        # Empty quadrant preference
+        if sname in photo_info.get("empty_quadrants", []):
+            rank = photo_info["empty_quadrants"].index(sname)
+            score += (4 - rank) * 15.0
+
+        # Diagonal balance with subject focal point
+        if fx > 0.52 and "left" in sname:
+            score += 25.0
+        elif fx < 0.48 and "right" in sname:
+            score += 25.0
+
+        if fy > 0.52 and "top" in sname:
+            score += 20.0
+        elif fy < 0.48 and "bottom" in sname:
+            score += 20.0
+
+        # Alternate primary corner across slides for visual variety
+        if slide_idx % 2 == 0 and "right" in sname:
+            score += 18.0
+        elif slide_idx % 2 == 1 and "left" in sname:
+            score += 18.0
+
+        scored_slots.append({
+            "slot": sname,
+            "x": round(sx, 3),
+            "y": round(sy, 3),
+            "size": sz,
+            "box": stk_box,
+            "score": score
+        })
+
+    scored_slots.sort(key=lambda s: s["score"], reverse=True)
+    return {
+        "frame": {"cx": cx, "cy": cy, "rot": rot, "centering": (fx, fy)},
+        "subject_box": subj_box,
+        "slots": scored_slots
+    }
+
+
 FRAME_DIMS = {
     "polaroid": (660, 920, 0), "film": (640, 892, 100), "poster": (668, 848, 150),
     "minimal": (680, 880, 120), "pichwai": (640, 902, 0), "gold_jaali": (640, 858, 0)
 }
 
 
-def make_frame(photo, style, theme, caption, font_kind):
+def make_frame(photo, style, theme, caption, font_kind, centering=(0.5, 0.4)):
     t = {k: resolve_color(v, theme) for k, v in theme.items() if k in ("paper", "text", "accent", "second", "star", "note", "hl", "title")}
     if "paper" not in t:
         t["paper"] = (255, 255, 255)
@@ -1258,7 +1500,7 @@ def make_frame(photo, style, theme, caption, font_kind):
     if style == "polaroid":
         pw, ph, side, top, bottom = 600, 760, 30, 30, 130
         body = Image.new("RGBA", (pw + 2 * side, ph + top + bottom), (*t["paper"], 255))
-        body.paste(fit_photo(photo, (pw, ph)), (side, top))
+        body.paste(fit_photo(photo, (pw, ph), centering=centering), (side, top))
         body.putalpha(rounded_mask(body.size, 10))
         k = font_kind if font_kind != "serif" else "hand"
         body.alpha_composite(caption_layer(caption, body.width, k, 62 if k == "hand" else 34, t["text"], height=bottom), (0, top + ph))
@@ -1266,7 +1508,7 @@ def make_frame(photo, style, theme, caption, font_kind):
     elif style == "film":
         pw, ph, side, tb = 580, 780, 30, 56
         body = Image.new("RGBA", (pw + 2 * side, ph + 2 * tb), (16, 16, 18, 255))
-        body.paste(fit_photo(photo, (pw, ph)), (side, tb))
+        body.paste(fit_photo(photo, (pw, ph), centering=centering), (side, tb))
         d = ImageDraw.Draw(body)
         for x in range(24, body.width - 30, 54):
             for y in (17, body.height - 37):
@@ -1285,7 +1527,7 @@ def make_frame(photo, style, theme, caption, font_kind):
             ox = int(fw * (41 / 308))
             oy = int(fh * (45 / 434))
             body = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
-            body.paste(fit_photo(photo, (pw, ph)), (ox, oy))
+            body.paste(fit_photo(photo, (pw, ph), centering=centering), (ox, oy))
             body = Image.alpha_composite(body, frame_img)
             cap = None
         else:
@@ -1297,7 +1539,7 @@ def make_frame(photo, style, theme, caption, font_kind):
             d = ImageDraw.Draw(body)
             d.rectangle([4, 4, body.width - 5, body.height - 5], outline=gold, width=3)
             d.rectangle([12, 12, body.width - 13, body.height - 13], outline=ivory, width=2)
-            body.paste(fit_photo(photo, (pw, ph)), (side, top))
+            body.paste(fit_photo(photo, (pw, ph), centering=centering), (side, top))
             cap = None
     elif style == "gold_jaali":
         frame_asset = get_navratri_asset_path("gold_jaali_frame.png")
@@ -1311,20 +1553,20 @@ def make_frame(photo, style, theme, caption, font_kind):
             ox = int(fw * (277 / 896))
             oy = int(fh * (343 / 1200))
             body = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
-            body.paste(fit_photo(photo, (pw, ph)), (ox, oy))
+            body.paste(fit_photo(photo, (pw, ph), centering=centering), (ox, oy))
             body = Image.alpha_composite(body, frame_img)
             cap = None
         else:
-            body = fit_photo(photo, (640, 860)).convert("RGBA")
+            body = fit_photo(photo, (640, 860), centering=centering).convert("RGBA")
             cap = None
     elif style == "poster":
         pw, ph, off = 640, 820, 28
         body = Image.new("RGBA", (pw + off, ph + off), (0, 0, 0, 0))
         ImageDraw.Draw(body).rectangle([off, off, pw + off, ph + off], fill=(*t["accent"], 255))
-        body.paste(fit_photo(photo, (pw, ph)), (0, 0))
+        body.paste(fit_photo(photo, (pw, ph), centering=centering), (0, 0))
         cap = caption_layer(caption, body.width, "sans_bold", 56, t["text"], height=150, upper=True)
     else:
-        body = fit_photo(photo, (680, 880)).convert("RGBA")
+        body = fit_photo(photo, (680, 880), centering=centering).convert("RGBA")
         body.putalpha(rounded_mask(body.size, 44))
         k = font_kind if font_kind != "hand" else "serif"
         cap = caption_layer(caption, body.width, k, 46 if k == "serif" else 36, t["text"], height=120)
@@ -1341,7 +1583,7 @@ def make_frame(photo, style, theme, caption, font_kind):
     return canvas
 
 
-def make_inset(photo, w, label, label_color, theme):
+def make_inset(photo, w, label, label_color, theme, centering=(0.5, 0.4)):
     h, b = int(w * 1.25), max(5, w // 28)
     body = Image.new("RGBA", (w + 2 * b, h + 2 * b), (255, 255, 255, 255))
     body.paste(fit_photo(photo, (w, h)), (b, b))
@@ -1778,11 +2020,13 @@ def draw_element(canvas, el, ox, W, H, theme, images, seed):
         put(canvas, paperclip(int(el.get("w", 42)), int(el.get("h", 90)), col), X, Y, rot, base=col)
     elif t == "inset":
         label_color = resolve_color(el.get("color", "theme:note"), theme)
-        put(canvas, make_inset(images[int(el.get("photo", 0)) % nimg], int(el.get("w", 190)), str(el.get("label", "")), label_color, theme),
+        centering = tuple(el.get("centering", (0.5, 0.4)))
+        put(canvas, make_inset(images[int(el.get("photo", 0)) % nimg], int(el.get("w", 190)), str(el.get("label", "")), label_color, theme, centering=centering),
             X, Y, rot)
     elif t == "frame":
+        centering = tuple(el.get("centering", (0.5, 0.4)))
         frame = make_frame(images[int(el.get("photo", 0)) % nimg], el.get("style", "polaroid"), theme, str(el.get("caption", "")),
-                           el.get("font", "serif"))
+                           el.get("font", "serif"), centering=centering)
         put(canvas, frame, X, Y, rot)
     elif t == "tape":
         put(canvas, tape(int(el.get("w", 210)), int(el.get("h", 58)), col, int(el.get("alpha", 190))), X, Y, rot, base=col)
@@ -2165,6 +2409,9 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     ranked_sticker_objs = rank_theme_stickers(brief, hint_str)
     thematic_stickers = [s.get("id") for s in ranked_sticker_objs if s.get("id")]
 
+    # 0. Analyze composition of all input photographs
+    photo_analyses = [analyze_photo_composition(im) for im in images] if images else []
+
     total_slides = (n + 1) if (cover and not cont) else n
     spec = new_spec(size, mode, theme, grain=True, family="scrapbook", n=total_slides)
     spec["global"].update(counter=True, swipe=True)
@@ -2175,6 +2422,12 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         slide_offset = 1
         if is_nav:
             # Authentic Navratri Desi reference layout with real assets
+            cov_p_info = photo_analyses[0] if photo_analyses else {
+                "scene_type": "general", "focal_point": (0.5, 0.4), "subject_box": (0.2, 0.2, 0.8, 0.8),
+                "has_face": False, "empty_quadrants": ["bottom_right", "top_right"],
+                "empty_bands": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}
+            }
+            cov_centering = cov_p_info["focal_point"]
             cov_els = [
                 E("lotus_border", h=125, x=0.5, y=0.04, z=1),
                 E("lotus_border", h=125, x=0.5, y=0.96, z=1),
@@ -2182,11 +2435,11 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 E("desi_sticker", kind="basket_gajra", size=240, x=0.78, y=0.32, rotate=4, z=2),
                 E("desi_sticker", kind="jhumka", size=180, x=0.76, y=0.48, rotate=6, z=2),
                 E("desi_sticker", kind="mojri", size=240, x=0.72, y=0.62, rotate=-12, z=2),
-                E("frame", photo=0, style="pichwai", caption="garba night", font="hand", x=0.31, y=0.35, rotate=-1, z=1),
+                E("frame", photo=0, centering=cov_centering, style="pichwai", caption="garba night", font="hand", x=0.31, y=0.35, rotate=-1, z=1),
                 E("music_player", title="Chogada", artist="Darshan Raval, Asees Kaur", current="1:48", total="4:11", w=480, h=140, x=0.31, y=0.66, rotate=0, z=2),
                 E("desi_sticker", kind="mehndi_chai", size=170, x=0.33, y=0.83, rotate=4, z=2),
                 E("desi_sticker", kind="rickshaw", size=155, x=0.12, y=0.84, rotate=-4, z=2),
-                E("frame", photo=(1 if n > 1 else 0), style="pichwai", caption="chogada vibe", font="hand", x=0.76, y=0.78, rotate=1, z=1),
+                E("frame", photo=(1 if n > 1 else 0), centering=cov_centering, style="pichwai", caption="chogada vibe", font="hand", x=0.76, y=0.78, rotate=1, z=1),
                 E("star", shape="sparkle4", size=48, x=0.56, y=0.16, rotate=12, color="theme:star", z=2),
                 E("star", shape="sparkle4", size=36, x=0.56, y=0.88, rotate=-8, color="theme:star", z=2),
             ]
@@ -2204,7 +2457,13 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             body_f = theme.get("body_font", "hand")
             s1 = fit_size(l1, title_f, 0.82 * W, 0, 65, 145)
             
-            cov_rot = 0.0 if (preserve_faces or density == "minimal") else -2.5
+            cov_p_info = photo_analyses[0] if photo_analyses else {
+                "scene_type": "general", "focal_point": (0.5, 0.4), "subject_box": (0.2, 0.2, 0.8, 0.8),
+                "has_face": False, "empty_quadrants": ["top_right", "top_left", "bottom_right", "bottom_left"],
+                "empty_bands": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}
+            }
+            cov_comp = compute_slide_composition(cov_p_info, 0, n + 1, brief, W, H, is_cover=True, rng=rng)
+            cov_rot = cov_comp["frame"]["rot"]
             cov_els = []
             
             # Layered torn paper band (for balanced & heavily_decorated)
@@ -2216,10 +2475,11 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 cov_els.append(E("tape", w=240, h=60, x=0.25, y=0.08, rotate=-8, color="theme:tape", alpha=220, z=2))
                 cov_els.append(E("tape", w=220, h=56, x=0.76, y=0.09, rotate=6, color="theme:tape", alpha=220, z=2))
             
-            # Main cover frame
+            # Main cover frame with focal point centering
             cov_els.append(
-                E("frame", photo=0, style=frame_style, caption=vibe.get("slides", [{}])[0].get("title", "moment 01"),
-                  font=body_f, x=0.5, y=0.38, rotate=cov_rot, z=1)
+                E("frame", photo=0, centering=cov_comp["frame"]["centering"], style=frame_style,
+                  caption=vibe.get("slides", [{}])[0].get("title", "moment 01"),
+                  font=body_f, x=cov_comp["frame"]["cx"], y=cov_comp["frame"]["cy"], rotate=cov_rot, z=1)
             )
             
             # Typography block
@@ -2235,10 +2495,15 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 E("text", text="swipe →", font=body_f, size=42, color="theme:note", x=0.84, y=0.92, rotate=4 if density != "minimal" else 0, z=2),
             ])
             
-            # Cover decorative motifs based on creative brief
+            # Cover decorative motifs based on creative brief & photo composition
+            cov_slots = cov_comp.get("slots", [])
+            s_cov1 = cov_slots[0] if cov_slots else {"x": 0.82, "y": 0.68, "size": 170}
+            s_cov2 = cov_slots[1] if len(cov_slots) > 1 else {"x": 0.16, "y": 0.66, "size": 140}
+            
             if density == "minimal":
-                if thematic_stickers and not preserve_faces:
-                    cov_els.append(E("sticker", id=thematic_stickers[0], size=135, x=0.84, y=0.18, rotate=6, z=2))
+                if thematic_stickers and not preserve_faces and cov_slots:
+                    cov_els.append(E("sticker", id=thematic_stickers[0], size=min(140, s_cov1["size"]),
+                                     x=s_cov1["x"], y=s_cov1["y"], rotate=6, z=2))
             else:
                 if "hearts" in motifs:
                     cov_els.append(E("heart", size=54, x=0.15, y=0.65, rotate=-12, color="theme:accent", z=2))
@@ -2258,9 +2523,11 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                     cov_els.append(E("squiggle", span=0.40, x=0.5, y=0.92, amp=6, wavelength=60, thick=4, color="theme:hl", z=2))
                 
                 if thematic_stickers:
-                    cov_els.append(E("sticker", id=thematic_stickers[0], size=180, x=0.82, y=0.68, rotate=8, z=2))
+                    cov_els.append(E("sticker", id=thematic_stickers[0], size=s_cov1["size"],
+                                     x=s_cov1["x"], y=s_cov1["y"], rotate=rng.randint(-8, 8), z=2))
                     if density == "heavily_decorated" and len(thematic_stickers) > 1:
-                        cov_els.append(E("sticker", id=thematic_stickers[1], size=140, x=0.16, y=0.66, rotate=-10, z=2))
+                        cov_els.append(E("sticker", id=thematic_stickers[1], size=s_cov2["size"],
+                                         x=s_cov2["x"], y=s_cov2["y"], rotate=rng.randint(-8, 8), z=2))
             
             sl[0].update(bg={"mode": "gradient", "bg1": theme["bg1"], "bg2": theme["bg2"]}, elements=cov_els)
 
@@ -2281,34 +2548,23 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
         subtitle = v_slide.get("subtitle") or (NAVRATRI_SUBS[idx % len(NAVRATRI_SUBS)] if is_nav else "A special memory captured in time")
         label = v_slide.get("label") or "detail"
         
-        # Determine photo placement & rotation according to explicit instructions & density
-        if preserve_faces or photo_placement == "center":
-            cx, cy = 0.5, 0.44
-            rot_val = 0.0
-        elif photo_placement == "staggered":
-            cx = 0.46 if idx % 2 == 0 else 0.54
-            cy = 0.43 if idx % 2 == 0 else 0.45
-            rot_val = round((-1.5 if idx % 2 == 0 else 1.5), 1)
-        elif cont:
-            if idx % 3 == 0:
-                cx, cy = 0.48, 0.44
-                rot_val = round(-2.5 + rng.uniform(-0.6, 0.6), 1)
-            elif idx % 3 == 1:
-                cx, cy = 0.54, 0.42
-                rot_val = round(2.8 + rng.uniform(-0.6, 0.6), 1)
-            else:
-                cx, cy = 0.46, 0.45
-                rot_val = round(-1.4 + rng.uniform(-0.6, 0.6), 1)
-        else:
-            rot_val = round(((-2.8 if idx % 2 == 0 else 2.8) + rng.uniform(-0.8, 0.8)), 1)
-            cy = 0.44 + (0.02 if idx % 2 == 0 else -0.02)
-            cx = 0.5
+        # Photo composition analysis for current slide
+        p_info = photo_analyses[idx % len(photo_analyses)] if photo_analyses else {
+            "scene_type": "general", "focal_point": (0.5, 0.4), "subject_box": (0.2, 0.2, 0.8, 0.8),
+            "has_face": False, "empty_quadrants": ["bottom_right", "bottom_left", "top_right", "top_left"],
+            "empty_bands": {"top": 1.0, "bottom": 1.0, "left": 1.0, "right": 1.0}
+        }
+        comp = compute_slide_composition(p_info, idx, n, brief, W, H, is_cover=False, rng=rng)
+        cx, cy = comp["frame"]["cx"], comp["frame"]["cy"]
+        rot_val = comp["frame"]["rot"]
+        centering = comp["frame"]["centering"]
+        slots = comp.get("slots", [])
         
         if is_nav:
             slide_els = [
                 E("lotus_border", h=125, x=0.5, y=0.04, z=1),
                 E("lotus_border", h=125, x=0.5, y=0.96, z=1),
-                E("frame", photo=idx, style=frame_style, caption=title, font="hand", x=cx, y=cy, rotate=rot_val, z=1),
+                E("frame", photo=idx, centering=centering, style=frame_style, caption=title, font="hand", x=cx, y=cy, rotate=rot_val, z=1),
                 E("tape", w=220, h=54, x=cx + rng.uniform(-0.04, 0.04), y=cy - 0.28, rotate=round(rot_val + rng.uniform(-6, 6), 1),
                   color="theme:tape", alpha=230, z=2),
                 E("text", text=subtitle, font="hand", size=52, color="theme:note", max_w=0.82, x=cx, y=0.86,
@@ -2341,10 +2597,10 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
             if density == "heavily_decorated":
                 slide_els.append(E("torn", y=0.76, h=int(0.24 * H), color="theme:band", jag=14, z=0))
             
-            # 2. Main photo frame
+            # 2. Main photo frame with subject-aware focal centering
             body_f = theme.get("body_font", "hand")
             slide_els.append(
-                E("frame", photo=idx, style=frame_style, caption=title, font=body_f, x=cx, y=cy, rotate=rot_val, z=1)
+                E("frame", photo=idx, centering=centering, style=frame_style, caption=title, font=body_f, x=cx, y=cy, rotate=rot_val, z=1)
             )
             
             # 3. Washi tape (if "tape" in motifs and not minimal with preserve_faces)
@@ -2355,46 +2611,48 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                       rotate=round(rot_val + rng.uniform(-5, 5), 1), color="theme:tape", alpha=225, z=2)
                 )
             
-            # 4. Story annotation text
+            # 4. Story annotation text (protected in bottom canvas margin)
             note_rot = round(rng.uniform(-1.5, 1.5), 1) if density != "minimal" else 0
             slide_els.append(
                 E("text", text=subtitle, font=body_f, size=52, color="theme:note", max_w=0.82, x=cx, y=0.86,
                   rotate=note_rot, shadow=False, line_gap=1.05)
             )
             
-            # 5. Thematic stickers & decorative motifs based on brief & density
+            # 5. Thematic stickers placed in photo-aware, non-colliding candidate slots
             if not is_nav and thematic_stickers:
                 stk_offset = 1 if cover else 0
+                s1_pos = (slots[0]["x"], slots[0]["y"], slots[0]["size"]) if len(slots) > 0 else (0.84 if idx % 2 == 0 else 0.16, 0.74, 165)
+                s2_pos = (slots[1]["x"], slots[1]["y"], slots[1]["size"]) if len(slots) > 1 else (0.16 if idx % 2 == 0 else 0.84, 0.18, 135)
+                
                 if density == "minimal":
                     # Minimal: placed on alternating slides only, small size, high breathing room
                     if idx % 2 == 0:
                         stk_id = thematic_stickers[(stk_offset + idx // 2) % len(thematic_stickers)]
-                        s_x = 0.85 if idx % 4 == 0 else 0.15
-                        s_y = 0.77 if preserve_faces else 0.74
-                        slide_els.append(E("sticker", id=stk_id, size=140, x=s_x, y=s_y, rotate=round(rng.uniform(-7, 7), 1), z=2))
+                        slide_els.append(E("sticker", id=stk_id, size=min(140, s1_pos[2]), x=s1_pos[0], y=s1_pos[1], rotate=round(rng.uniform(-6, 6), 1), z=2))
                 elif density == "balanced":
-                    # Balanced: 1 sticker per slide, non-adjacent repetition
+                    # Balanced: 1 sticker per slide, non-adjacent repetition, photo-aware slot
                     stk_id = thematic_stickers[(stk_offset + idx) % len(thematic_stickers)]
-                    s_x = 0.84 if idx % 2 == 0 else 0.16
-                    s_y = 0.76 if preserve_faces else round(0.72 + rng.uniform(-0.03, 0.03), 2)
-                    slide_els.append(E("sticker", id=stk_id, size=165, x=s_x, y=s_y, rotate=rng.randint(-12, 12), z=2))
+                    slide_els.append(E("sticker", id=stk_id, size=s1_pos[2], x=s1_pos[0], y=s1_pos[1], rotate=rng.randint(-12, 12), z=2))
                 else:
-                    # Heavily decorated: 2 stickers per slide (1 primary + 1 secondary accent in opposing corners)
+                    # Heavily decorated: 2 stickers per slide in opposing photo-free slots
                     stk1 = thematic_stickers[(stk_offset + idx * 2) % len(thematic_stickers)]
-                    s1_x = 0.84 if idx % 2 == 0 else 0.16
-                    s1_y = 0.76 if preserve_faces else round(0.72 + rng.uniform(-0.03, 0.03), 2)
-                    slide_els.append(E("sticker", id=stk1, size=175, x=s1_x, y=s1_y, rotate=rng.randint(-12, 12), z=2))
+                    slide_els.append(E("sticker", id=stk1, size=s1_pos[2], x=s1_pos[0], y=s1_pos[1], rotate=rng.randint(-12, 12), z=2))
                     
                     if len(thematic_stickers) > 1:
                         stk2 = thematic_stickers[(stk_offset + idx * 2 + 1) % len(thematic_stickers)]
-                        s2_x = 0.16 if idx % 2 == 0 else 0.84
-                        s2_y = 0.18 if preserve_faces else round(0.22 + rng.uniform(-0.03, 0.03), 2)
-                        slide_els.append(E("sticker", id=stk2, size=135, x=s2_x, y=s2_y, rotate=rng.randint(-10, 10), z=2))
+                        slide_els.append(E("sticker", id=stk2, size=s2_pos[2], x=s2_pos[0], y=s2_pos[1], rotate=rng.randint(-10, 10), z=2))
 
-            # 6. Secondary motifs (stars, hearts, route doodles, flowers)
+            # 6. Secondary motifs (stars, hearts, route doodles, flowers) avoiding photo subject
             if density != "minimal":
                 p_left = (0.14 if idx % 2 == 0 else 0.86, 0.18 + rng.uniform(-0.03, 0.03))
                 p_right = (0.88 if idx % 2 == 0 else 0.12, 0.72 + rng.uniform(-0.03, 0.03))
+                
+                # Check collision with subject box and nudge if needed
+                subj_box = comp["subject_box"]
+                if boxes_intersect((p_left[0] - 0.04, p_left[1] - 0.04, p_left[0] + 0.04, p_left[1] + 0.04), subj_box):
+                    p_left = (0.09 if idx % 2 == 0 else 0.91, 0.16)
+                if boxes_intersect((p_right[0] - 0.04, p_right[1] - 0.04, p_right[0] + 0.04, p_right[1] + 0.04), subj_box):
+                    p_right = (0.91 if idx % 2 == 0 else 0.09, 0.76)
                 
                 if "hearts" in motifs:
                     slide_els.append(E("heart", size=rng.randint(48, 66), x=p_left[0], y=p_left[1],
@@ -2421,7 +2679,8 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
                 if not cont:
                     if density == "heavily_decorated" and n > 1 and idx % 2 == 1 and not preserve_faces:
                         inset_ph = (idx + 1) % n
-                        slide_els.append(E("inset", photo=inset_ph, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
+                        inset_centering = photo_analyses[inset_ph]["focal_point"] if photo_analyses else (0.5, 0.4)
+                        slide_els.append(E("inset", photo=inset_ph, centering=inset_centering, w=200, label=label, x=0.82, y=0.22, rotate=6, color="theme:note", z=2))
                         slide_els.append(E("tape", w=120, h=40, x=0.82, y=0.14, rotate=-10, color="theme:hl", alpha=200, z=3))
                     elif "squiggle" in motifs and idx % 2 == 0 and not any(w in (hint or "").lower() for w in ["city", "street"]):
                         slide_els.append(E("squiggle", span=0.45, x=0.5, y=0.92, amp=5, wavelength=65, thick=5, color="theme:hl", z=2))
