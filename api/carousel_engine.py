@@ -15,6 +15,7 @@ import json
 import math
 import os
 import random
+import re
 import uuid
 import zlib
 
@@ -424,19 +425,50 @@ def make_theme(colors, tone, preset="Bubblegum"):
     return theme
 
 
+PRESET_THEMES = {
+    "Warm Cream & Espresso": {
+        "title": "#2c2523", "star": "#d49b45", "hl": "#d9b48f", "note": "#5c524b",
+        "band": "#ede6d8", "tape": "#e8d3b9", "bg1": "#f8f5ee", "bg2": "#f0ebe1",
+        "text": "#2c2523", "paper": (255, 255, 255), "accent": "#d49b45", "second": "#d9b48f", "tone": "light"
+    },
+    "Sage & Botanical": {
+        "title": "#273a2e", "star": "#7d9d83", "hl": "#a3c4a8", "note": "#485d4f",
+        "band": "#dfe7df", "tape": "#c8dbc9", "bg1": "#f3f6f3", "bg2": "#eaf0ea",
+        "text": "#273a2e", "paper": (255, 255, 255), "accent": "#7d9d83", "second": "#a3c4a8", "tone": "light"
+    },
+    "Vintage Rose": {
+        "title": "#3e282b", "star": "#d49b45", "hl": "#e2a8a8", "note": "#6c4d51",
+        "band": "#fae4eb", "tape": "#f3c2cf", "bg1": "#fdf6f7", "bg2": "#f7e8ec",
+        "text": "#3e282b", "paper": (255, 255, 255), "accent": "#d49b45", "second": "#e2a8a8", "tone": "light"
+    },
+    "Terracotta & Clay": {
+        "title": "#3b2b25", "star": "#e29b68", "hl": "#c97a5b", "note": "#66493e",
+        "band": "#eddccc", "tape": "#e8cbb6", "bg1": "#f9f6f0", "bg2": "#eee6dc",
+        "text": "#3b2b25", "paper": (255, 255, 255), "accent": "#e29b68", "second": "#c97a5b", "tone": "light"
+    },
+    "Midnight Journal": {
+        "title": "#f4efe6", "star": "#ffd166", "hl": "#e5b869", "note": "#e2dcd2",
+        "band": "#2b2b34", "tape": "#d9ab55", "bg1": "#201f26", "bg2": "#16161b",
+        "text": "#f4efe6", "paper": (32, 31, 38), "accent": "#ffd166", "second": "#e5b869", "tone": "dark"
+    },
+    "Royal Crimson & Pichwai": {
+        "title": "#ffffff", "star": "#f3b334", "hl": "#e24358", "note": "#fedec6",
+        "band": "#38060c", "tape": "#d49b45", "bg1": "#580b14", "bg2": "#3e050b",
+        "text": "#fff1d6", "paper": (255, 248, 238), "accent": "#f3b334", "second": "#e24358", "tone": "dark"
+    },
+    "Bubblegum": {
+        "title": "#ffa0e2", "star": "#f7e23a", "hl": "#fae23c", "note": "#ffffff",
+        "band": "#ffe5f7", "tape": "#fff176", "bg1": "#fff0fa", "bg2": "#fce4ec",
+        "text": "#d81b60", "paper": (255, 255, 255), "accent": "#f7e23a", "second": "#ffa0e2", "tone": "light"
+    }
+}
+
+
 def apply_preset(theme, name):
-    if name in PRESETS:
+    if name in PRESET_THEMES:
+        theme.update(PRESET_THEMES[name])
+    elif name in PRESETS:
         theme["title"], theme["star"], theme["note"], theme["hl"] = PRESETS[name]
-        if name == "Royal Crimson & Pichwai":
-            theme["bg1"] = "#580b14"
-            theme["bg2"] = "#3e050b"
-            theme["tape"] = "#d49b45"
-            theme["band"] = "#38060c"
-            theme["text"] = "#fff1d6"
-            theme["paper"] = (255, 248, 238)
-            theme["accent"] = "#f3b334"
-            theme["second"] = "#e24358"
-            theme["tone"] = "dark"
     return theme
 
 
@@ -557,11 +589,53 @@ NAVRATRI_SUBS = [
 ]
 
 
+def is_navratri_request(text="", brief=None, vibe=None):
+    """
+    Strictly checks if a text, creative brief, or vibe is an Indian festive/Navratri/Garba request.
+    Uses regex word boundaries to avoid false positives like 'design', 'destination', etc.
+    """
+    candidates = []
+    if text:
+        candidates.append(str(text))
+    if isinstance(brief, dict):
+        candidates.extend([
+            str(brief.get("main_theme") or ""),
+            str(brief.get("aesthetic") or ""),
+            str(brief.get("explicit_instructions", {}).get("user_notes") or "")
+        ])
+    if isinstance(vibe, dict):
+        candidates.extend([
+            str(vibe.get("vibe_name") or ""),
+            str(vibe.get("hint") or "")
+        ])
+        v_brief = vibe.get("creative_brief")
+        if isinstance(v_brief, dict):
+            candidates.extend([
+                str(v_brief.get("main_theme") or ""),
+                str(v_brief.get("aesthetic") or ""),
+                str(v_brief.get("explicit_instructions", {}).get("user_notes") or "")
+            ])
+            
+    combined = " ".join(candidates).strip().lower()
+    if not combined:
+        return False
+        
+    # Direct high-confidence festive Indian keywords with word boundaries
+    if re.search(r"\b(navratri|garba|dandiya|chogada|dholida|lehenga)\b", combined, re.IGNORECASE):
+        return True
+        
+    # Pichwai or Desi only when explicitly associated with traditional/festive celebration
+    if re.search(r"\b(pichwai|desi)\b", combined, re.IGNORECASE) and re.search(r"\b(festive|festival|traditional|ethnic|garba|celebration|navratri)\b", combined, re.IGNORECASE):
+        return True
+        
+    return False
+
+
 def heuristic_creative_brief(hint="", colors=None, tone="light"):
     h = (hint or "").lower()
     
     # 1. Main Theme
-    if any(w in h for w in ["navratri", "garba", "dandiya", "desi", "chogada"]):
+    if is_navratri_request(h):
         theme = "festive celebration"
     elif any(w in h for w in ["cafe", "coffee", "latte", "bakery", "cappuccino", "brunch", "date"]):
         theme = "cafe date"
@@ -579,7 +653,7 @@ def heuristic_creative_brief(hint="", colors=None, tone="light"):
         theme = "lifestyle memories"
         
     # 2. Aesthetic
-    if any(w in h for w in ["navratri", "garba", "dandiya", "desi"]):
+    if is_navratri_request(h):
         aes = "desi festive"
     elif any(w in h for w in ["coquette", "bow", "pink", "doll", "ballet"]):
         aes = "coquette"
@@ -736,13 +810,13 @@ def heuristic_creative_brief(hint="", colors=None, tone="light"):
             "photo_placement": photo_placement,
             "preserve_faces": preserve_faces,
             "layering": layering,
-            "user_notes": hint[:120] if hint else "aesthetic carousel design"
+            "user_notes": hint[:120] if hint else "aesthetic visual memories"
         }
     }
 
 
 def heuristic_vibe(images, n, family="scrapbook", hint=""):
-    is_nav = any(w in (hint or "").lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
+    is_nav = is_navratri_request(hint)
     colors = extract_palette(images)
     av = sum(max(c) for c in colors) / len(colors) / 255
     sa = sum(sat(c) for c in colors) / len(colors)
@@ -764,7 +838,8 @@ def heuristic_vibe(images, n, family="scrapbook", hint=""):
 
 
 def clean_vibe(raw, n, hint=""):
-    is_nav = any(w in (hint or "").lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "festive"])
+    raw_brief = raw.get("creative_brief")
+    is_nav = is_navratri_request(hint, brief=raw_brief, vibe=raw)
     
     # Extract or construct creative brief
     raw_brief = raw.get("creative_brief")
@@ -2343,8 +2418,8 @@ def build_scrapbook(images, vibe, mode="separate", size=(1080, 1350), seed=0, co
     cont = mode == "continuous"
     
     brief = vibe.get("creative_brief") or {}
-    hint_str = str(hint or vibe.get("hint") or (vibe.get("creative_brief") or {}).get("explicit_instructions", {}).get("user_notes", "") or "")
-    is_nav = any(w in str(vibe).lower() for w in ["navratri", "garba", "dandiya", "desi", "chogada", "pichwai", "festive"]) or vibe.get("style") == "pichwai" or brief.get("aesthetic") == "desi festive"
+    hint_str = str(hint or vibe.get("hint") or "")
+    is_nav = is_navratri_request(hint_str, brief=brief, vibe=vibe)
     
     if is_nav:
         theme = {

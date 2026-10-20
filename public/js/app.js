@@ -684,9 +684,10 @@
       }
     };
 
-    const isNav = preset === 'Royal Crimson & Pichwai' || /navratri|garba|dandiya|desi|chogada|pichwai/i.test(hint || '');
+    const isNav = /\b(navratri|garba|dandiya|chogada|dholida|lehenga)\b/i.test(hint || '') ||
+                  (/\b(pichwai|desi)\b/i.test(hint || '') && /\b(festive|festival|traditional|ethnic|garba|celebration)\b/i.test(hint || ''));
     let activePreset = preset;
-    if (isNav) {
+    if (isNav && !state.paletteManuallySelected) {
       activePreset = 'Royal Crimson & Pichwai';
     } else if (!state.paletteManuallySelected && hint) {
       if (/coquette|pink|girly|doll|rose|blush/i.test(hint)) activePreset = 'Vintage Rose';
